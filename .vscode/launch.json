@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Chunk",
+            "request": "launch",
+            "mainClass": "javamc.Chunk",
+            "projectName": "project"
+        },
+        {
+            "type": "java",
+            "name": "Current File",
+            "request": "launch",
+            "mainClass": "${file}",
+            "vmArgs": "-Xmx2g -Xms2g"
+        },
+        {
+            "type": "java",
+            "name": "Start",
+            "request": "launch",
+            "mainClass": "javamc.Start",
+            "projectName": "project",
+            "vmArgs": "-Xmx2g -Xms2g"
+        }
+    ]
+}
