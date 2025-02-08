@@ -59,6 +59,18 @@ public class Block {
        blocks.put(5, "Stone Block");
     }
 
+    public static int getFaceNumber(int face) {
+        if (face == 3) {
+            return 2;
+        }
+        else if (face == 2) {
+            return 1;
+        }
+        return 0;
+    }
+
+    //face == 2 is bottom face
+    //face == 1 is top face
     public static float[] getTexturePos(int block, int face) {
         float[] result = new float[2];
 

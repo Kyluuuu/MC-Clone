@@ -1,6 +1,7 @@
 package javamc;
 
-//player is two blocks tall
+import com.jme3.math.Vector3f;
+
 
 public class Player {
     private int x;
@@ -11,6 +12,12 @@ public class Player {
     public Player() {
         x = 0;
         y = 0;
+    }
+
+    public void updatePlayerPosition(Vector3f pos) {
+        x = (int) pos.getX();
+        y = (int) pos.getY();
+        z = (int) pos.getZ();
     }
 
     public int getX() {

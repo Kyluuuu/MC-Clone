@@ -14,22 +14,26 @@ import com.jme3.texture.Texture;
 import com.jme3.util.BufferUtils;
 import com.jme3.util.SkyFactory;
 import com.jme3.scene.shape.Box;
+import java.util.List;
 
 public class Main extends SimpleApplication {
-
-    World world;
+    private final Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+    private final Texture texture = assetManager.loadTexture("McTextureAtlas.png");
 
     public Main() {
-        world = new World();
         start();
-
+        texture.setMagFilter(Texture.MagFilter.Nearest);
+        texture.setMinFilter(Texture.MinFilter.NearestNoMipMaps);
+        mat.setTexture("ColorMap", texture);
     }
 
+    // coordinates for jmonkey, x, y, z, where y is vertical
     @Override
     public void simpleInitApp() {
-        setDisplayStatView(false);
+        setDisplayStatView(true);
         flyCam.setMoveSpeed(60f);
-        cam.setFrustumFar(500f);
+
+        cam.setFrustumFar(10000f);
 
         Texture hdrTexture = assetManager.loadTexture("skyHdr.hdr");
         hdrTexture.getImage().setColorSpace(null);
@@ -37,32 +41,23 @@ public class Main extends SimpleApplication {
                 SkyFactory.createSky(assetManager, hdrTexture, SkyFactory.EnvMapType.EquirectMap);
         rootNode.attachChild(sky);
 
-        // coordinates for jmonkey, x, y, z, where y is vertical
+    }
 
-        // Grid grid = new Grid(10, 10, 1.0f); // (Columns, Rows, Spacing)
-        // Geometry gridGeo = new Geometry("Grid", grid);
 
-        // Material mat1 = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        // mat1.setColor("Color", ColorRGBA.White);
-        // gridGeo.setMaterial(mat1);
-
-        // rootNode.attachChild(gridGeo);
-
-        for (Chunk chunk : world.getChunks()) {
-            Geometry chunkGeometry = chunk.generateMesh();
-            Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-            Texture texture = assetManager.loadTexture("McTextureAtlas.png");
-            texture.setMagFilter(Texture.MagFilter.Nearest);
-            texture.setMinFilter(Texture.MinFilter.NearestNoMipMaps);
-            mat.setTexture("ColorMap", texture);
+    public void renderChunks(List<Chunk> chunks) {
+        for (Chunk chunk : chunks) {
+            Geometry chunkGeometry = chunk.generateMesh(world.getAdjChunks(chunk.getX(), chunk.getZ()));
             chunkGeometry.setMaterial(mat);
             rootNode.attachChild(chunkGeometry);
-            // chunk.clearMeshBuffer();
         }
     }
 
     @Override
     public void simpleUpdate(float tpf) {
+        world.updatePlayerPosition(cam.getLocation());
+    }
+
+    public void updateChunkMeshes() {
 
     }
 

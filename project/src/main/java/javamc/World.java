@@ -1,64 +1,93 @@
 package javamc;
 
 import java.util.Random;
+import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Random;
 
 
 public class World {
-    private int renderDistance = 15;
-    private final Random rand = new Random();
+    private int renderDistance = 3;
+    private Random rand = new Random();
     private long seed;
-    private HashMap<int[], Chunk> chunks = new HashMap<>();
+    private HashMap<String, Chunk> chunks = new HashMap<>();
     private static final double SCALE = 0.009;
     private Player player;
-    private Random random = new Random();
+    private Chunk currentChunk;
+    private int[] currentChunkPos;
+    private Main main;
 
     public World() {
+        currentChunkPos = new int[2];
         seed = rand.nextInt(10000);
         initWorld();
         player = new Player();
+        main = new Main();
     }
 
     private void generateChunk(int x, int z) {
-        short[][] heightMap = new short[Consts.CHUNKSIZE][Consts.CHUNKSIZE];
+        int[][] heightMap = new int[Consts.CHUNKSIZE][Consts.CHUNKSIZE];
 
         for (int xMap = 0; xMap < Consts.CHUNKSIZE; xMap++) {
             for (int zMap = 0; zMap < Consts.CHUNKSIZE; zMap++) {
                 double nx = (x + xMap) * SCALE;
                 double nz = (z + zMap) * SCALE;
-                // double height = OpenSimplex2.noise2(seed, nx, nz) * 50 + 120;
-                double height = OpenSimplex2.noise2(seed, nx, nz) * 5 + 10;
-                heightMap[xMap][zMap] = (short) height;
+                double height = OpenSimplex2.noise2(seed, nx, nz) * 30 + 120;
+                heightMap[xMap][zMap] = (int) height;
             }
         }
-
-
-        System.out.println("Generating a chunk!");
-
-        chunks.put(new int[] {x, z}, new Chunk(heightMap, x, z));
+        chunks.put(x + "," + z, new Chunk(heightMap, x, z));
     }
 
     private void initWorld() {
-        System.out.println("Generating world...");
-
-
-
-        for (int x = -Consts.CHUNKSIZE * renderDistance; x < Consts.CHUNKSIZE * renderDistance; x +=
-                Consts.CHUNKSIZE) {
+        for (int x = -Consts.CHUNKSIZE * renderDistance; x < Consts.CHUNKSIZE * renderDistance; x
+            +=
+            Consts.CHUNKSIZE) {
             for (int z = -Consts.CHUNKSIZE * renderDistance; z < renderDistance
-                    * Consts.CHUNKSIZE; z += Consts.CHUNKSIZE) {
+            * Consts.CHUNKSIZE; z += Consts.CHUNKSIZE) {
                 generateChunk(x, z);
             }
         }
+        currentChunkPos[0] = 0;
+        currentChunkPos[1] = 0;
+        currentChunk = chunks.get("0,0");
+    }
 
-        // generateChunk(0, 0);
+    private void updateChunks() {
+        
+    }
+
+    public void updatePlayerPosition(Vector3f pos) {
+        player.updatePlayerPosition(pos);
+        if (player.getX() < currentChunk.getX()) {
+            currentChunk = chunks.get((currentChunkPos[0] - Consts.CHUNKSIZE) + "," + currentChunkPos[1]);
+        }
+        if (player.getX() >= currentChunk.getX() + Consts.CHUNKSIZE) {
+            currentChunk = chunks.get((currentChunkPos[0] + Consts.CHUNKSIZE) + "," + currentChunkPos[1]);
+        }
+        if (player.getY() < currentChunk.getZ() + Consts.CHUNKSIZE) {
+            currentChunk = chunks.get(currentChunkPos[0] + "," + (currentChunkPos[1] - Consts.CHUNKSIZE));
+        }
+        if (player.getY() >= currentChunk.getZ() + Consts.CHUNKSIZE) {
+            currentChunk = chunks.get(currentChunkPos[0] + "," + (currentChunkPos[1] + Consts.CHUNKSIZE));
+        }
+        updateChunks();
+    }
+
+    public Chunk[] getAdjChunks(int x, int z) {
+        Chunk[] adjChunks = new Chunk[4];
+        adjChunks[0] = chunks.get((x - Consts.CHUNKSIZE) + "," + z); //left chunk
+        adjChunks[1] = chunks.get(x + "," + (z - Consts.CHUNKSIZE)); //top chunk
+        adjChunks[2] = chunks.get((x + Consts.CHUNKSIZE) + "," + z); //right chunk
+        adjChunks[3] = chunks.get(x + "," + (z + Consts.CHUNKSIZE)); //bottom chunk
+        return adjChunks;
     }
 
     public List<Geometry> getChunksGeometry() {
-        return chunks.values().stream().map(Chunk::generateMesh).toList();
+        return chunks.values().stream().map(
+            chunk -> chunk.generateMesh(getAdjChunks(chunk.getX(), chunk.getZ()))
+        ).toList();
     }
 
     public List<Chunk> getChunks() {
@@ -66,12 +95,12 @@ public class World {
     }
 
     public Chunk getChunkFromPos(int x, int y) {
-        return chunks.get(new int[] {x, y});
+        return chunks.get(x + "," + y);
     }
 
     public Chunk getChunkFromPlayerPos(int x, int y) {
-        return chunks.get(new int[] {x, y});
+        return chunks.get(x + "," + y);
     }
-}
+}   
 
 
