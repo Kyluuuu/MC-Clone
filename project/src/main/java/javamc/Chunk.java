@@ -45,6 +45,10 @@ public class Chunk {
         return blocks[XYZposToBlockArrayPos(x, y, z)] == 0;
     }
 
+    public Geometry getPreGeneratedGeometry() {
+        return chunkGeometry;
+    }
+
     private void generateBlockPlacement() {
         for (int xV = 0; xV < Consts.CHUNKSIZE; xV++) {
             for (int zV = 0; zV < Consts.CHUNKSIZE; zV++) {
@@ -67,7 +71,7 @@ public class Chunk {
     // return new int[] {xOut, yOut, zOut};
     // }
 
-    public Geometry generateMesh(Chunk[] adjChunks) {
+    public void generateMesh(Chunk[] adjChunks) {
         int[] bufferLengths = calculateBufferLengths();
 
         vertices = new float[bufferLengths[0]];
@@ -104,8 +108,6 @@ public class Chunk {
         vIndex = 0;
         uvIndex = 0;
         inIndex = 0;
-
-        return geometry;
     }
 
     private int[] calculateBufferLengths() {
