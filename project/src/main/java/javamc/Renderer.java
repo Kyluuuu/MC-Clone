@@ -15,6 +15,7 @@ import com.jme3.util.BufferUtils;
 import com.jme3.util.SkyFactory;
 import com.jme3.scene.shape.Box;
 import java.util.List;
+import com.jme3.math.Vector3f;
 
 public class Renderer extends SimpleApplication {
 
@@ -56,15 +57,19 @@ public class Renderer extends SimpleApplication {
         World.getInstance().isReady();
     }
 
+    public void setCameraInit(int y) {
+        cam.setLocation(new Vector3f(Consts.SPAWNPOINTXZ, y + Consts.SPAWNHEIGHTOFFSET, Consts.SPAWNPOINTXZ));
+    }
+
 
     public void renderChunks(List<Geometry> chunks, List<Geometry> unrenderChunks) {
-        if (chunks != null) {
+        if (!chunks.isEmpty()) {
             for (Geometry geometry : chunks) {
                 geometry.setMaterial(mat);
                 rootNode.attachChild(geometry);
             }
         }
-        if (unrenderChunks != null) {
+        if (!unrenderChunks.isEmpty()) {
             for (Geometry geometry : unrenderChunks) {
                 rootNode.detachChild(geometry);
             }

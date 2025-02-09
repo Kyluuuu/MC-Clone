@@ -49,6 +49,10 @@ public class Chunk {
         return chunkGeometry;
     }
 
+    public boolean hasGeometry() {
+        return chunkGeometry != null;
+    }
+
     private void generateBlockPlacement() {
         for (int xV = 0; xV < Consts.CHUNKSIZE; xV++) {
             for (int zV = 0; zV < Consts.CHUNKSIZE; zV++) {
@@ -99,11 +103,9 @@ public class Chunk {
         geometry.move(x, 0, z);
 
         chunkGeometry = geometry;
-
         vertices = null;
         uvs = null;
         indices = null;
-        blockTops = null;
         indiCounter = 0;
         vIndex = 0;
         uvIndex = 0;
@@ -281,10 +283,13 @@ public class Chunk {
     }
 
     public void clearMeshBuffer() {
-        chunkMesh.clearBuffer(VertexBuffer.Type.Position);
-        chunkMesh.clearBuffer(VertexBuffer.Type.TexCoord);
-        chunkMesh.clearBuffer(VertexBuffer.Type.Index);
-        chunkMesh = null;
+        chunkGeometry = null;
+        if (chunkMesh != null) {
+            chunkMesh.clearBuffer(VertexBuffer.Type.Position);
+            chunkMesh.clearBuffer(VertexBuffer.Type.TexCoord);
+            chunkMesh.clearBuffer(VertexBuffer.Type.Index);
+            chunkMesh = null;
+        }
     }
 }
 

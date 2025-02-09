@@ -8,6 +8,8 @@ public class Consts {
     public static final int TEXTUREPIXELSIZE = 16;
     public static final int TEXTUREATLASSIZE = 1024;
     public static final int TEXTUREATLASROW = TEXTUREATLASSIZE / TEXTUREPIXELSIZE;
+    public static final int SPAWNPOINTXZ = Consts.CHUNKSIZE - (Consts.CHUNKSIZE / 2);
+    public static final int SPAWNHEIGHTOFFSET = 10;
 
     private Consts() {}
 }
