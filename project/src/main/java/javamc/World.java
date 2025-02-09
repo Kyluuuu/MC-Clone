@@ -20,7 +20,7 @@ public class World {
     }
 
     private int renderDistance = 3;
-    private int constantRenderDistance = 10; // 1 block around the player, so 3x3, if 2 then 5x5
+    private int constantRenderDistance = 2; // 1 block around the player, so 3x3, if 2 then 5x5
     private Random rand = new Random();
     private long seed;
     private HashMap<String, Chunk> chunks = new HashMap<>();
@@ -192,7 +192,7 @@ public class World {
             renderChunkGeometies.add(chunk.getPreGeneratedGeometry());
         }
 
-        //get geometries of chunks that needed to be unloaded
+        // get geometries of chunks that needed to be unloaded
         for (int i = 0; i < 1 + constantRenderDistance * 2; i++) {
             int xUL = xUnrenderChunk + i * Consts.CHUNKSIZE * xDirection;
             int zUL = zUnrenderChunk + i * Consts.CHUNKSIZE * zDirection;
@@ -201,7 +201,7 @@ public class World {
                 Chunk curChunk = chunks.get(chunkID);
                 if (curChunk.hasGeometry()) {
                     unrenderChunkGeometies.add(curChunk.getPreGeneratedGeometry());
-                    curChunk.clearMeshBuffer();
+                    curChunk.clearGeometry();
                 }
             }
         }
@@ -221,6 +221,7 @@ public class World {
     private void renderChunks(List<Geometry> renderChunks, List<Geometry> unrenderChunks) {
         System.out.println("world rendering chunks");
         Renderer.getInstance().renderChunks(renderChunks, unrenderChunks);
+        System.out.println("Number of chunks : " + chunks.size());
     }
 
     private List<Geometry> getInitChunkGeometry() {

@@ -1,10 +1,8 @@
 package javamc;
 
-import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.VertexBuffer;
-
 
 public class Chunk {
     private byte[] blocks = new byte[Consts.CHUNKSIZE * Consts.WORLDHEIGHT * Consts.CHUNKSIZE];
@@ -12,7 +10,6 @@ public class Chunk {
     private int x;
     private int z;
     private Geometry chunkGeometry;
-    private Mesh chunkMesh;
 
     // block array of just the tops the chunk
     private int[][] blockTops = new int[Consts.CHUNKSIZE][Consts.CHUNKSIZE];
@@ -49,6 +46,10 @@ public class Chunk {
         return chunkGeometry;
     }
 
+    public void clearGeometry() {
+        chunkGeometry = null;
+    }
+
     public boolean hasGeometry() {
         return chunkGeometry != null;
     }
@@ -68,13 +69,6 @@ public class Chunk {
         return Consts.CHUNKSIZE * Consts.CHUNKSIZE * y + z * Consts.CHUNKSIZE + x;
     }
 
-    // private int[] BlockArrayPosToXYZpos(int index) {
-    // int zOut = index % Consts.CHUNKSIZE * Consts.CHUNKSIZE;
-    // int xOut = zOut % Consts.CHUNKSIZE;
-    // int yOut = (index - zOut) / Consts.CHUNKSIZE * Consts.CHUNKSIZE;
-    // return new int[] {xOut, yOut, zOut};
-    // }
-
     public void generateMesh(Chunk[] adjChunks) {
         int[] bufferLengths = calculateBufferLengths();
 
@@ -84,7 +78,7 @@ public class Chunk {
 
         generateBlocks(adjChunks);
 
-        chunkMesh = new Mesh();
+        Mesh chunkMesh = new Mesh();
         // Set mesh mode to Triangles
         chunkMesh.setMode(Mesh.Mode.Triangles);
         // set vertices
@@ -110,6 +104,8 @@ public class Chunk {
         vIndex = 0;
         uvIndex = 0;
         inIndex = 0;
+
+
     }
 
     private int[] calculateBufferLengths() {
@@ -280,16 +276,6 @@ public class Chunk {
         indices[inIndex++] = (short) indiCounter;
 
         indiCounter += 4;
-    }
-
-    public void clearMeshBuffer() {
-        chunkGeometry = null;
-        if (chunkMesh != null) {
-            chunkMesh.clearBuffer(VertexBuffer.Type.Position);
-            chunkMesh.clearBuffer(VertexBuffer.Type.TexCoord);
-            chunkMesh.clearBuffer(VertexBuffer.Type.Index);
-            chunkMesh = null;
-        }
     }
 }
 

@@ -16,6 +16,8 @@ import com.jme3.util.SkyFactory;
 import com.jme3.scene.shape.Box;
 import java.util.List;
 import com.jme3.math.Vector3f;
+import java.lang.management.BufferPoolMXBean;
+import java.lang.management.ManagementFactory;
 
 public class Renderer extends SimpleApplication {
 
@@ -58,7 +60,8 @@ public class Renderer extends SimpleApplication {
     }
 
     public void setCameraInit(int y) {
-        cam.setLocation(new Vector3f(Consts.SPAWNPOINTXZ, y + Consts.SPAWNHEIGHTOFFSET, Consts.SPAWNPOINTXZ));
+        cam.setLocation(new Vector3f(Consts.SPAWNPOINTXZ, y + Consts.SPAWNHEIGHTOFFSET,
+                Consts.SPAWNPOINTXZ));
     }
 
 
@@ -71,7 +74,16 @@ public class Renderer extends SimpleApplication {
         }
         if (!unrenderChunks.isEmpty()) {
             for (Geometry geometry : unrenderChunks) {
+                Mesh mesh = geometry.getMesh();
+
+                BufferUtils.destroyDirectBuffer(mesh.getBuffer(VertexBuffer.Type.Position).getData());
+                BufferUtils.destroyDirectBuffer(mesh.getBuffer(VertexBuffer.Type.TexCoord).getData());
+                BufferUtils.destroyDirectBuffer(mesh.getBuffer(VertexBuffer.Type.Index).getData());
+        
+                // Detach geometry and nullify its material
+                geometry.setMaterial(null);
                 rootNode.detachChild(geometry);
+                geometry.removeFromParent();
             }
         }
     }
