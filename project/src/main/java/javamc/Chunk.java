@@ -7,7 +7,6 @@ import com.jme3.scene.VertexBuffer;
 import java.util.List;
 
 public class Chunk {
-    // private byte[] blocks = new byte[Consts.CHUNKSIZE * Consts.WORLDHEIGHT * Consts.CHUNKSIZE];
     private int[] blocks;
 
     private int x;
@@ -26,10 +25,9 @@ public class Chunk {
     private int inIndex = 0;
     private int indiCounter = 0;
 
-    List<Integer> tempBlocks = new ArrayList<>();
-    int currentBlock = 0;
-    int currentLength = 0;
-    int maxLength = 0;
+    private int currentBlock = 0;
+    private int currentLength = 0;
+    private int maxLength = 0;
 
     public Chunk(int[][] blockTops, int x, int z, short highest) {
         this.blockTops = blockTops;
@@ -63,19 +61,20 @@ public class Chunk {
     }
 
     private void generateBlockPlacement(short highest) {
+        List<Integer> tempBlocks = new ArrayList<>();
         currentBlock = Consts.BlockName.Stone_Block.Value;
 
         for (int yV = 0; yV <= highest; yV++) {
             for (int zV = 0; zV < Consts.CHUNKSIZE; zV++) {
                 for (int xV = 0; xV < Consts.CHUNKSIZE; xV++) {
                     if (yV > blockTops[xV][zV]) {
-                        addRLEBlock(Consts.BlockName.Air.Value);
+                        addRLEBlock(tempBlocks, Consts.BlockName.Air.Value);
                     } else if (yV < blockTops[xV][zV] - Consts.DIRTLAYER) {
-                        addRLEBlock(Consts.BlockName.Stone_Block.Value);
+                        addRLEBlock(tempBlocks, Consts.BlockName.Stone_Block.Value);
                     } else if (yV == blockTops[xV][zV]) {
-                        addRLEBlock(Consts.BlockName.Grass_Block.Value);
+                        addRLEBlock(tempBlocks, Consts.BlockName.Grass_Block.Value);
                     } else {
-                        addRLEBlock(Consts.BlockName.Dirt_Block.Value);
+                        addRLEBlock(tempBlocks, Consts.BlockName.Dirt_Block.Value);
                     }
 
                 }
@@ -89,11 +88,9 @@ public class Chunk {
             blocks[i] = tempBlocks.get(i).intValue();
         }
         blocks[blocks.length - 1] = 0;
-
-        tempBlocks = null;
     }
 
-    private void addRLEBlock(int newBlock) {
+    private void addRLEBlock(List<Integer> tempBlocks, int newBlock) {
         if (currentBlock == newBlock) {
             currentLength++;
         } else {
@@ -118,9 +115,9 @@ public class Chunk {
     public void generateMesh(Chunk[] adjChunks) {
         // int[] bufferLengths = calculateBufferLengths();
 
-        vertices = new float[999999];
-        uvs = new float[999999];
-        indices = new short[999999];
+        vertices = new float[500000];
+        uvs = new float[500000];
+        indices = new short[500000];
 
         generateBlocksGeometry(adjChunks);
 

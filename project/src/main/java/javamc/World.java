@@ -20,7 +20,7 @@ public class World {
     }
 
     private int renderDistance = 3;
-    private int constantRenderDistance = 1; // 1 block around the player, so 3x3, if 2 then 5x5
+    private int constantRenderDistance = 10; // 1 block around the player, so 3x3, if 2 then 5x5
     private Random rand = new Random();
     private long seed;
     private HashMap<String, Chunk> chunks = new HashMap<>();
@@ -57,8 +57,7 @@ public class World {
                 }
             }
         }
-        Chunk chunk = new Chunk(heightMap, x, z, highest);
-        chunks.put(x + "," + z, chunk);
+        chunks.put(x + "," + z, new Chunk(heightMap, x, z, highest));
     }
 
     private int getHeight(double nx, double nz) {
@@ -105,7 +104,11 @@ public class World {
     }
 
     public void updatePlayerPosition(Vector3f pos) {
+        Vector3f oldPos = player.getPos();
         player.updatePlayerPosition(pos);
+        if (oldPos.getX() == player.getX() && oldPos.getZ() == player.getZ()) {
+            return;
+        }
 
         int xRenderChunk = 0;
         int zRenderChunk = 0;
@@ -183,7 +186,7 @@ public class World {
 
 
         // generate new chunks in direction
-        for (int i = 0; i < 1 + constantRenderDistance * 3; i++) {
+        for (int i = 0; i < 3 + constantRenderDistance * 2; i++) {
             int xUL = xGenChunk + i * Consts.CHUNKSIZE * xDirection;
             int zUL = zGenChunk + i * Consts.CHUNKSIZE * zDirection;
             generateChunk(xUL, zUL);
@@ -230,7 +233,6 @@ public class World {
     private void renderChunks(List<Geometry> renderChunks, List<Geometry> unrenderChunks) {
         System.out.println("world rendering chunks");
         Renderer.getInstance().renderChunks(renderChunks, unrenderChunks);
-        System.out.println("Number of chunks : " + chunks.size());
     }
 
     private List<Geometry> getInitChunkGeometry() {

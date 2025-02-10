@@ -6,72 +6,41 @@ import java.awt.Point;
 public class Block {
     private static HashMap<Integer, String> blocks;
 
-    private static int[] leftFaceVerts = {
-        0, 0, 1,
-        0, 1, 1,
-        0, 1, 0,
-        0, 0, 0
-    };
+    private static int[] leftFaceVerts = {0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0};
 
-    private static int[] rightFaceVerts = {
-        1, 0, 0,
-        1, 1, 0,
-        1, 1, 1,
-        1, 0, 1
-    };
+    private static int[] rightFaceVerts = {1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1};
 
-    private static int[] topFaceVerts = {
-        0, 1, 0,
-        0, 1, 1,
-        1, 1, 1,
-        1, 1, 0
-    };
+    private static int[] topFaceVerts = {0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0};
 
-    private static int[] bottomFaceVerts = {
-        0, 0, 0,
-        1, 0, 0,
-        1, 0, 1,
-        0, 0, 1
-    };
+    private static int[] bottomFaceVerts = {0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1};
 
-    private static int[] backFaceVerts = {
-        0, 0, 0,
-        0, 1, 0,
-        1, 1, 0,
-        1, 0, 0
-    };
+    private static int[] backFaceVerts = {0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0};
 
-    private static int[] frontFaceVerts = {
-        1, 0, 1,
-        1, 1, 1,
-        0, 1, 1,
-        0, 0, 1
-    };
+    private static int[] frontFaceVerts = {1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1};
 
     static {
-       blocks = new HashMap<>();
+        blocks = new HashMap<>();
 
-       blocks.put(Consts.BlockName.Air.Value, "Air");
-       blocks.put(Consts.BlockName.Grass_Block.Value, "Grass_BlockSide");
-       blocks.put(2, "Grass_BlockTop");
-       blocks.put(3, "Grass_BlockBottom");
-       blocks.put(Consts.BlockName.Glass_Block.Value, "Glass_Block");
-       blocks.put(Consts.BlockName.Stone_Block.Value, "Stone_Block");
-       blocks.put(Consts.BlockName.Dirt_Block.Value, "Dirt_Block");
+        blocks.put(Consts.BlockName.Air.Value, "Air");
+        blocks.put(Consts.BlockName.Grass_Block.Value, "Grass_BlockSide");
+        blocks.put(2, "Grass_BlockTop");
+        blocks.put(3, "Grass_BlockBottom");
+        blocks.put(Consts.BlockName.Glass_Block.Value, "Glass_Block");
+        blocks.put(Consts.BlockName.Stone_Block.Value, "Stone_Block");
+        blocks.put(Consts.BlockName.Dirt_Block.Value, "Dirt_Block");
     }
 
     public static int getFaceNumber(int face) {
         if (face == 3) {
             return 2;
-        }
-        else if (face == 2) {
+        } else if (face == 2) {
             return 1;
         }
         return 0;
     }
 
-    //face == 2 is bottom face
-    //face == 1 is top face
+    // face == 2 is bottom face
+    // face == 1 is top face
     public static float[] getTexturePos(int block, int face) {
         float[] result = new float[2];
 

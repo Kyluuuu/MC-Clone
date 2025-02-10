@@ -4,31 +4,30 @@ import com.jme3.math.Vector3f;
 
 
 public class Player {
-    private int x;
-    private int z;
-    private int y;
+    private Vector3f pos; 
     private int[] inventory;
 
     public Player() {
-        x = 0;
-        y = 0;
+        pos = new Vector3f(0, 0, 0);
     }
 
     public void updatePlayerPosition(Vector3f pos) {
-        x = (int) pos.getX();
-        y = (int) pos.getY();
-        z = (int) pos.getZ();
+        this.pos = pos;
+    }
+
+    public Vector3f getPos() {
+        return this.pos;
     }
 
     public int getX() {
-        return x;
+        return (int) pos.getX();
     }
 
     public int getZ() {
-        return z;
+        return (int) pos.getZ();
     }
 
     public int getY() {
-        return y;
+        return (int) pos.getY();
     }
 }

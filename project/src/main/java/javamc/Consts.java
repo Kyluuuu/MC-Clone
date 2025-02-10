@@ -2,7 +2,7 @@ package javamc;
 
 public class Consts {
     public static final int WORLDHEIGHT = 250;
-    public static final int CHUNKSIZE = 32;
+    public static final int CHUNKSIZE = 15; //32
     public static final int BOTTOMOFWORLD = 0;
     public static final float TEXTUREATLASUNIT = 1 / 64f;
     public static final int TEXTUREPIXELSIZE = 16;
