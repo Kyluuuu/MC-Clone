@@ -12,6 +12,7 @@ public class Consts {
     public static final int SPAWNHEIGHTOFFSET = 10;
     public static final int CHUNKMAXBLOCKS = CHUNKSIZE * CHUNKSIZE * WORLDHEIGHT;
     public static final int DIRTLAYER = 3;
+    public static final int SHORTMAX = 32767;
 
     public enum BlockName {
         Air(0), Grass_Block(1),
