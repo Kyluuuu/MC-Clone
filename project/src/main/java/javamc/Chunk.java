@@ -7,7 +7,7 @@ import com.jme3.scene.VertexBuffer;
 import java.util.List;
 
 public class Chunk {
-    private short[] blocks;
+    private int[] blocks;
 
     private int x;
     private int z;
@@ -27,6 +27,7 @@ public class Chunk {
 
     private int currentBlock = 0;
     private int currentLength = 0;
+    private int maxLength = 0;
 
     public Chunk(int[][] blockTops, int x, int z, short highest) {
         this.blockTops = blockTops;
@@ -79,20 +80,12 @@ public class Chunk {
                 }
             }
         }
-        if (currentLength > Consts.SHORTMAX) {
-            tempBlocks.add(currentBlock);
-            tempBlocks.add(Consts.SHORTMAX);
-            tempBlocks.add(currentBlock);
-            tempBlocks.add(currentLength - Consts.SHORTMAX);
-        }
-        else {
-            tempBlocks.add(currentBlock);
-            tempBlocks.add(currentLength);
-        }
+        tempBlocks.add(currentBlock);
+        tempBlocks.add(maxLength + currentLength);
 
-        blocks = new short[tempBlocks.size() + 1];
+        blocks = new int[tempBlocks.size() + 1];
         for (int i = 0; i < blocks.length - 1; i++) {
-            blocks[i] = (short) tempBlocks.get(i).intValue();
+            blocks[i] = tempBlocks.get(i).intValue();
         }
         blocks[blocks.length - 1] = 0;
     }
@@ -101,16 +94,9 @@ public class Chunk {
         if (currentBlock == newBlock) {
             currentLength++;
         } else {
-            if (currentLength > Consts.SHORTMAX) {
-                tempBlocks.add(currentBlock);
-                tempBlocks.add(Consts.SHORTMAX);
-                tempBlocks.add(currentBlock);
-                tempBlocks.add(currentLength - Consts.SHORTMAX);
-            }
-            else {
-                tempBlocks.add(currentBlock);
-                tempBlocks.add(currentLength);
-            }
+            maxLength += currentLength;
+            tempBlocks.add(currentBlock);
+            tempBlocks.add(maxLength);
             currentBlock = newBlock;
             currentLength = 1;
         }
@@ -118,12 +104,10 @@ public class Chunk {
 
     private int XYZposToBlockArrayPos(int x, int y, int z) {
         int oldIndex = Consts.CHUNKSIZE * Consts.CHUNKSIZE * y + z * Consts.CHUNKSIZE + x;
-        int curSum = 0;
         for (int i = 1; i < blocks.length; i += 2) {
-            if (oldIndex < blocks[i] + curSum) {
+            if (oldIndex < blocks[i]) {
                 return i - 1;
             }
-            curSum += blocks[i];
         }
         return blocks.length - 1;
     }
@@ -168,7 +152,7 @@ public class Chunk {
 
     }
 
-    //calculates vertices length needed for matrices for the mesh generation
+    // calculates vertices length needed for matrices for the mesh generation
     private int[] calculateBufferLengths(Chunk[] adjChunks) {
         int vertexBufferLength = 0;
         int uvBufferLength = 0;
@@ -264,7 +248,7 @@ public class Chunk {
         return new int[] {vertexBufferLength, uvBufferLength, indiceBufferLength};
     }
 
-    
+
 
     private void generateBlocksGeometry(Chunk[] adjChunks) {
         for (int xV = 0; xV < Consts.CHUNKSIZE; xV++) {

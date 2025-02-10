@@ -24,11 +24,11 @@ public class Start {
 // gui
 // raycasting for showing which block the player is currently looking at, only need 1 ray
 
-//optimise chunk memory by using short instead of int, block amounts that exceed short can just be repeated again
-// might be half of 32000 for negatives
-
 //untouched chunks can be made static and therefore can be fully forgotten when unrendering
 //as these chunks can be regenerated from the noise maps, however im not sure this is good or not
 //however modified chunks cannot be forgotten
 
 //need to save chunks to save memory 
+//gracefully end the program later like saving the chunks
+
+

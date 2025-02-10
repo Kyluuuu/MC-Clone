@@ -91,6 +91,12 @@ public class Renderer extends SimpleApplication {
     }
 
     @Override
+    public void destroy() {
+        super.destroy();
+        World.getInstance().shutdown();
+    }
+
+    @Override
     public void simpleUpdate(float tpf) {
         World.getInstance().updatePlayerPosition(cam.getLocation());
     }
