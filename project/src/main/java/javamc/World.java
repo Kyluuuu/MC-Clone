@@ -186,7 +186,7 @@ public class World {
 
 
         // generate new chunks in direction
-        for (int i = 0; i < 3 + constantRenderDistance * 2; i++) {
+        for (int i = 0; i < 1 + (constantRenderDistance + 1) * 2; i++) {
             int xUL = xGenChunk + i * Consts.CHUNKSIZE * xDirection;
             int zUL = zGenChunk + i * Consts.CHUNKSIZE * zDirection;
             generateChunk(xUL, zUL);

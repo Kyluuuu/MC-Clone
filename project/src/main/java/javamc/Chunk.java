@@ -113,11 +113,11 @@ public class Chunk {
     }
 
     public void generateMesh(Chunk[] adjChunks) {
-        // int[] bufferLengths = calculateBufferLengths();
+        int[] bufferLengths = calculateBufferLengths(adjChunks);
 
-        vertices = new float[500000];
-        uvs = new float[500000];
-        indices = new short[500000];
+        vertices = new float[bufferLengths[0]];
+        uvs = new float[bufferLengths[1]];
+        indices = new short[bufferLengths[2]];
 
         generateBlocksGeometry(adjChunks);
 
@@ -151,49 +151,103 @@ public class Chunk {
 
     }
 
-    // private int[] calculateBufferLengths() {
-    // int vertexBufferLength = 0;
-    // int uvBufferLength = 0;
-    // int indiceBufferLength = 0;
+    //calculates vertices length needed for matrices for the mesh generation
+    private int[] calculateBufferLengths(Chunk[] adjChunks) {
+        int vertexBufferLength = 0;
+        int uvBufferLength = 0;
+        int indiceBufferLength = 0;
 
-    // for (int xV = 0; xV < Consts.CHUNKSIZE; xV++) {
-    // for (int zV = 0; zV < Consts.CHUNKSIZE; zV++) {
-    // for (int yV = 0; yV <= blockTops[xV][zV]; yV++) {
-    // int faces = 0;
-    // if (blocks[XYZposToBlockArrayPos(xV, yV, zV)] == 0)
-    // continue;
-    // if (yV > 0 && blocks[XYZposToBlockArrayPos(xV, yV - 1, zV)] == 0) { // bottom
-    // // face
-    // faces++;
-    // }
-    // if (blocks[XYZposToBlockArrayPos(xV, yV + 1, zV)] == 0) { // top face
-    // faces++;
-    // }
-    // if (xV == 0 || xV > 0 && blocks[XYZposToBlockArrayPos(xV - 1, yV, zV)] == 0) { // left
-    // // face
-    // faces++;
-    // }
-    // if (xV == Consts.CHUNKSIZE - 1 || xV < Consts.CHUNKSIZE - 1
-    // && blocks[XYZposToBlockArrayPos(xV + 1, yV, zV)] == 0) { // rightface
-    // faces++;
-    // }
-    // if (zV == Consts.CHUNKSIZE - 1 || zV < Consts.CHUNKSIZE - 1
-    // && blocks[XYZposToBlockArrayPos(xV, yV, zV + 1)] == 0) { // front
-    // // face
-    // faces++;
-    // }
-    // if (zV == 0 || zV > 0 && blocks[XYZposToBlockArrayPos(xV, yV, zV - 1)] == 0) { // backface
-    // faces++;
-    // }
-    // vertexBufferLength += faces * 12;
-    // uvBufferLength += faces * 8;
-    // indiceBufferLength += faces * 6;
-    // }
-    // }
-    // }
+        for (int xV = 0; xV < Consts.CHUNKSIZE; xV++) {
+            for (int zV = 0; zV < Consts.CHUNKSIZE; zV++) {
+                for (int yV = 0; yV <= blockTops[xV][zV]; yV++) {
+                    if (isBlockAir(xV, yV, zV))
+                        continue;
 
-    // return new int[] {vertexBufferLength, uvBufferLength, indiceBufferLength};
-    // }
+                    int faces = 0;
+                    if (isBlockAir(xV, yV + 1, zV)) { // top face
+                        faces++;
+                    }
+                    if (yV > 0 && isBlockAir(xV, yV - 1, zV)) { // bottom face
+                        faces++;
+                    }
+                    if (xV != Consts.CHUNKSIZE - 1 && isBlockAir(xV + 1, yV, zV)) { // rightface
+                        faces++;
+                    }
+                    if (zV != Consts.CHUNKSIZE - 1 && isBlockAir(xV, yV, zV + 1)) { // frontface
+                        faces++;
+                    }
+                    if (zV > 0 && isBlockAir(xV, yV, zV - 1)) { // backface
+                        faces++;
+                    }
+                    if (xV > 0 && isBlockAir(xV - 1, yV, zV)) { // left face
+                        faces++;
+                    }
+                    vertexBufferLength += faces * 12;
+                    uvBufferLength += faces * 8;
+                    indiceBufferLength += faces * 6;
+                }
+            }
+        }
+
+        if (adjChunks == null)
+            return new int[] {vertexBufferLength, uvBufferLength, indiceBufferLength};
+
+        int faces = 0;
+        // left face
+        if (adjChunks[0] != null) {
+            int xVLR = 0;
+            for (int zVLR = 0; zVLR < Consts.CHUNKSIZE; zVLR++) {
+                for (int yVLR = 0; yVLR <= blockTops[xVLR][zVLR]; yVLR++) {
+                    if (adjChunks[0].isBlockAir(Consts.CHUNKSIZE - 1, yVLR, zVLR)) {
+                        faces++;
+                    }
+                }
+            }
+        }
+
+        // right face
+        if (adjChunks[2] != null) {
+            int xVLR = Consts.CHUNKSIZE - 1;
+            for (int zVLR = 0; zVLR < Consts.CHUNKSIZE; zVLR++) {
+                for (int yVLR = 0; yVLR <= blockTops[xVLR][zVLR]; yVLR++) {
+                    if (adjChunks[2].isBlockAir(0, yVLR, zVLR)) {
+                        faces++;
+                    }
+                }
+            }
+        }
+
+        // backface
+        if (adjChunks[1] != null) {
+            int zVFB = 0;
+            for (int xVFB = 0; xVFB < Consts.CHUNKSIZE; xVFB++) {
+                for (int yVFB = 0; yVFB <= blockTops[xVFB][zVFB]; yVFB++) {
+                    if (adjChunks[1].isBlockAir(xVFB, yVFB, Consts.CHUNKSIZE - 1)) {
+                        faces++;
+                    }
+                }
+            }
+        }
+        // frontface
+        if (adjChunks[3] != null) {
+            int zVFB = Consts.CHUNKSIZE - 1;
+            for (int xVFB = 0; xVFB < Consts.CHUNKSIZE; xVFB++) {
+                for (int yVFB = 0; yVFB <= blockTops[xVFB][zVFB]; yVFB++) {
+                    if (adjChunks[3].isBlockAir(xVFB, yVFB, 0)) {
+                        faces++;
+                    }
+                }
+            }
+        }
+
+        vertexBufferLength += faces * 12;
+        uvBufferLength += faces * 8;
+        indiceBufferLength += faces * 6;
+
+        return new int[] {vertexBufferLength, uvBufferLength, indiceBufferLength};
+    }
+
+    
 
     private void generateBlocksGeometry(Chunk[] adjChunks) {
         for (int xV = 0; xV < Consts.CHUNKSIZE; xV++) {
