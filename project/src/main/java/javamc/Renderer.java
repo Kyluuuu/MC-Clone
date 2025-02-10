@@ -80,7 +80,6 @@ public class Renderer extends SimpleApplication {
                 BufferUtils.destroyDirectBuffer(mesh.getBuffer(VertexBuffer.Type.TexCoord).getData());
                 BufferUtils.destroyDirectBuffer(mesh.getBuffer(VertexBuffer.Type.Index).getData());
         
-                // Detach geometry and nullify its material
                 geometry.setMaterial(null);
                 rootNode.detachChild(geometry);
                 geometry.removeFromParent();

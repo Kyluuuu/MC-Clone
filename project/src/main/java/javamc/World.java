@@ -20,7 +20,7 @@ public class World {
     }
 
     private int renderDistance = 3;
-    private int constantRenderDistance = 2; // 1 block around the player, so 3x3, if 2 then 5x5
+    private int constantRenderDistance = 1; // 1 block around the player, so 3x3, if 2 then 5x5
     private Random rand = new Random();
     private long seed;
     private HashMap<String, Chunk> chunks = new HashMap<>();
@@ -44,15 +44,20 @@ public class World {
             return;
 
         int[][] heightMap = new int[Consts.CHUNKSIZE][Consts.CHUNKSIZE];
+        short highest = 0;
 
         for (int xMap = 0; xMap < Consts.CHUNKSIZE; xMap++) {
             for (int zMap = 0; zMap < Consts.CHUNKSIZE; zMap++) {
                 double nx = (x + xMap) * SCALE;
                 double nz = (z + zMap) * SCALE;
-                heightMap[xMap][zMap] = getHeight(nx, nz);
+                int height = getHeight(nx, nz);
+                heightMap[xMap][zMap] = height;
+                if (height > highest) {
+                    highest = (short) height;
+                }
             }
         }
-        Chunk chunk = new Chunk(heightMap, x, z);
+        Chunk chunk = new Chunk(heightMap, x, z, highest);
         chunks.put(x + "," + z, chunk);
     }
 
@@ -84,6 +89,10 @@ public class World {
                 curChunk.generateMesh(getAdjChunks(xU, zU));
             }
         }
+
+        // generateChunk(0, 0);
+        // chunks.get(0 + "," + 0).generateMesh(null);
+
 
         currentChunkPos[0] = 0;
         currentChunkPos[1] = 0;

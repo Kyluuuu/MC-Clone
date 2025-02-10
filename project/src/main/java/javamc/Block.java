@@ -51,12 +51,13 @@ public class Block {
     static {
        blocks = new HashMap<>();
 
-       blocks.put(0, "Air");
-       blocks.put(1, "Grass BlockSide");
-       blocks.put(2, "Grass BlockTop");
-       blocks.put(3, "Grass BlockBottom");
-       blocks.put(4, "Glass Block");
-       blocks.put(5, "Stone Block");
+       blocks.put(Consts.BlockName.Air.Value, "Air");
+       blocks.put(Consts.BlockName.Grass_Block.Value, "Grass_BlockSide");
+       blocks.put(2, "Grass_BlockTop");
+       blocks.put(3, "Grass_BlockBottom");
+       blocks.put(Consts.BlockName.Glass_Block.Value, "Glass_Block");
+       blocks.put(Consts.BlockName.Stone_Block.Value, "Stone_Block");
+       blocks.put(Consts.BlockName.Dirt_Block.Value, "Dirt_Block");
     }
 
     public static int getFaceNumber(int face) {
@@ -75,7 +76,7 @@ public class Block {
         float[] result = new float[2];
 
         if (face != 0) {
-            String temp = blocks.get(block).split(" ")[0];
+            String temp = blocks.get(block).split("_")[0];
 
             if (!blocks.containsKey(block + face) || !blocks.get(block + face).contains(temp)) {
                 face = 0;

@@ -1,11 +1,14 @@
 package javamc;
 
+import java.util.ArrayList;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.VertexBuffer;
+import java.util.List;
 
 public class Chunk {
-    private byte[] blocks = new byte[Consts.CHUNKSIZE * Consts.WORLDHEIGHT * Consts.CHUNKSIZE];
+    // private byte[] blocks = new byte[Consts.CHUNKSIZE * Consts.WORLDHEIGHT * Consts.CHUNKSIZE];
+    private int[] blocks;
 
     private int x;
     private int z;
@@ -23,11 +26,16 @@ public class Chunk {
     private int inIndex = 0;
     private int indiCounter = 0;
 
-    public Chunk(int[][] blockTops, int x, int z) {
+    List<Integer> tempBlocks = new ArrayList<>();
+    int currentBlock = 0;
+    int currentLength = 0;
+    int maxLength = 0;
+
+    public Chunk(int[][] blockTops, int x, int z, short highest) {
         this.blockTops = blockTops;
         this.x = x;
         this.z = z;
-        generateBlockPlacement();
+        generateBlockPlacement(highest);
     }
 
     public int getX() {
@@ -39,7 +47,7 @@ public class Chunk {
     }
 
     public boolean isBlockAir(int x, int y, int z) {
-        return blocks[XYZposToBlockArrayPos(x, y, z)] == 0;
+        return blocks[XYZposToBlockArrayPos(x, y, z)] == Consts.BlockName.Air.Value;
     }
 
     public Geometry getPreGeneratedGeometry() {
@@ -54,29 +62,67 @@ public class Chunk {
         return chunkGeometry != null;
     }
 
-    private void generateBlockPlacement() {
-        for (int xV = 0; xV < Consts.CHUNKSIZE; xV++) {
+    private void generateBlockPlacement(short highest) {
+        currentBlock = Consts.BlockName.Stone_Block.Value;
+
+        for (int yV = 0; yV <= highest; yV++) {
             for (int zV = 0; zV < Consts.CHUNKSIZE; zV++) {
-                for (int yV = 0; yV < blockTops[xV][zV]; yV++) {
-                    blocks[XYZposToBlockArrayPos(xV, yV, zV)] = 5;
+                for (int xV = 0; xV < Consts.CHUNKSIZE; xV++) {
+                    if (yV > blockTops[xV][zV]) {
+                        addRLEBlock(Consts.BlockName.Air.Value);
+                    } else if (yV < blockTops[xV][zV] - Consts.DIRTLAYER) {
+                        addRLEBlock(Consts.BlockName.Stone_Block.Value);
+                    } else if (yV == blockTops[xV][zV]) {
+                        addRLEBlock(Consts.BlockName.Grass_Block.Value);
+                    } else {
+                        addRLEBlock(Consts.BlockName.Dirt_Block.Value);
+                    }
+
                 }
-                blocks[XYZposToBlockArrayPos(xV, (blockTops[xV][zV]), zV)] = 1;
             }
+        }
+        tempBlocks.add(currentBlock);
+        tempBlocks.add(maxLength + currentLength);
+
+        blocks = new int[tempBlocks.size() + 1];
+        for (int i = 0; i < blocks.length - 1; i++) {
+            blocks[i] = tempBlocks.get(i).intValue();
+        }
+        blocks[blocks.length - 1] = 0;
+
+        tempBlocks = null;
+    }
+
+    private void addRLEBlock(int newBlock) {
+        if (currentBlock == newBlock) {
+            currentLength++;
+        } else {
+            maxLength += currentLength;
+            tempBlocks.add(currentBlock);
+            tempBlocks.add(maxLength);
+            currentBlock = newBlock;
+            currentLength = 1;
         }
     }
 
     private int XYZposToBlockArrayPos(int x, int y, int z) {
-        return Consts.CHUNKSIZE * Consts.CHUNKSIZE * y + z * Consts.CHUNKSIZE + x;
+        int oldIndex = Consts.CHUNKSIZE * Consts.CHUNKSIZE * y + z * Consts.CHUNKSIZE + x;
+        for (int i = 1; i < blocks.length; i += 2) {
+            if (oldIndex < blocks[i]) {
+                return i - 1;
+            }
+        }
+        return blocks.length - 1;
     }
 
     public void generateMesh(Chunk[] adjChunks) {
-        int[] bufferLengths = calculateBufferLengths();
+        // int[] bufferLengths = calculateBufferLengths();
 
-        vertices = new float[bufferLengths[0]];
-        uvs = new float[bufferLengths[1]];
-        indices = new short[bufferLengths[2]];
+        vertices = new float[999999];
+        uvs = new float[999999];
+        indices = new short[999999];
 
-        generateBlocks(adjChunks);
+        generateBlocksGeometry(adjChunks);
 
         Mesh chunkMesh = new Mesh();
         // Set mesh mode to Triangles
@@ -108,55 +154,55 @@ public class Chunk {
 
     }
 
-    private int[] calculateBufferLengths() {
-        int vertexBufferLength = 0;
-        int uvBufferLength = 0;
-        int indiceBufferLength = 0;
+    // private int[] calculateBufferLengths() {
+    // int vertexBufferLength = 0;
+    // int uvBufferLength = 0;
+    // int indiceBufferLength = 0;
 
+    // for (int xV = 0; xV < Consts.CHUNKSIZE; xV++) {
+    // for (int zV = 0; zV < Consts.CHUNKSIZE; zV++) {
+    // for (int yV = 0; yV <= blockTops[xV][zV]; yV++) {
+    // int faces = 0;
+    // if (blocks[XYZposToBlockArrayPos(xV, yV, zV)] == 0)
+    // continue;
+    // if (yV > 0 && blocks[XYZposToBlockArrayPos(xV, yV - 1, zV)] == 0) { // bottom
+    // // face
+    // faces++;
+    // }
+    // if (blocks[XYZposToBlockArrayPos(xV, yV + 1, zV)] == 0) { // top face
+    // faces++;
+    // }
+    // if (xV == 0 || xV > 0 && blocks[XYZposToBlockArrayPos(xV - 1, yV, zV)] == 0) { // left
+    // // face
+    // faces++;
+    // }
+    // if (xV == Consts.CHUNKSIZE - 1 || xV < Consts.CHUNKSIZE - 1
+    // && blocks[XYZposToBlockArrayPos(xV + 1, yV, zV)] == 0) { // rightface
+    // faces++;
+    // }
+    // if (zV == Consts.CHUNKSIZE - 1 || zV < Consts.CHUNKSIZE - 1
+    // && blocks[XYZposToBlockArrayPos(xV, yV, zV + 1)] == 0) { // front
+    // // face
+    // faces++;
+    // }
+    // if (zV == 0 || zV > 0 && blocks[XYZposToBlockArrayPos(xV, yV, zV - 1)] == 0) { // backface
+    // faces++;
+    // }
+    // vertexBufferLength += faces * 12;
+    // uvBufferLength += faces * 8;
+    // indiceBufferLength += faces * 6;
+    // }
+    // }
+    // }
+
+    // return new int[] {vertexBufferLength, uvBufferLength, indiceBufferLength};
+    // }
+
+    private void generateBlocksGeometry(Chunk[] adjChunks) {
         for (int xV = 0; xV < Consts.CHUNKSIZE; xV++) {
             for (int zV = 0; zV < Consts.CHUNKSIZE; zV++) {
                 for (int yV = 0; yV <= blockTops[xV][zV]; yV++) {
-                    int faces = 0;
-                    if (blocks[XYZposToBlockArrayPos(xV, yV, zV)] == 0)
-                        continue;
-                    if (yV > 0 && blocks[XYZposToBlockArrayPos(xV, yV - 1, zV)] == 0) { // bottom
-                        // face
-                        faces++;
-                    }
-                    if (blocks[XYZposToBlockArrayPos(xV, yV + 1, zV)] == 0) { // top face
-                        faces++;
-                    }
-                    if (xV == 0 || xV > 0 && blocks[XYZposToBlockArrayPos(xV - 1, yV, zV)] == 0) { // left
-                                                                                                   // face
-                        faces++;
-                    }
-                    if (xV == Consts.CHUNKSIZE - 1 || xV < Consts.CHUNKSIZE - 1
-                            && blocks[XYZposToBlockArrayPos(xV + 1, yV, zV)] == 0) { // rightface
-                        faces++;
-                    }
-                    if (zV == Consts.CHUNKSIZE - 1 || zV < Consts.CHUNKSIZE - 1
-                            && blocks[XYZposToBlockArrayPos(xV, yV, zV + 1)] == 0) { // front
-                        // face
-                        faces++;
-                    }
-                    if (zV == 0 || zV > 0 && blocks[XYZposToBlockArrayPos(xV, yV, zV - 1)] == 0) { // backface
-                        faces++;
-                    }
-                    vertexBufferLength += faces * 12;
-                    uvBufferLength += faces * 8;
-                    indiceBufferLength += faces * 6;
-                }
-            }
-        }
-
-        return new int[] {vertexBufferLength, uvBufferLength, indiceBufferLength};
-    }
-
-    private void generateBlocks(Chunk[] adjChunks) {
-        for (int xV = 0; xV < Consts.CHUNKSIZE; xV++) {
-            for (int zV = 0; zV < Consts.CHUNKSIZE; zV++) {
-                for (int yV = 0; yV <= blockTops[xV][zV]; yV++) {
-                    if (blocks[XYZposToBlockArrayPos(xV, yV, zV)] == 0)
+                    if (isBlockAir(xV, yV, zV))
                         continue;
                     processInnerBlockFace(xV, yV, zV);
                 }
@@ -187,6 +233,8 @@ public class Chunk {
     }
 
     private void processChunkBorderFace(Chunk[] adjChunks) {
+        if (adjChunks == null)
+            return;
         // left face
         if (adjChunks[0] != null) {
             int xVLR = 0;
