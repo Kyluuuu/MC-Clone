@@ -6,6 +6,7 @@ import com.jme3.scene.Geometry;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.*;
 
 
 public class World {
@@ -20,19 +21,21 @@ public class World {
     }
 
     private int renderDistance = 3;
-    private int constantRenderDistance = 10; // 1 block around the player, so 3x3, if 2 then 5x5
+    private int constantRenderDistance = 50; // 1 block around the player, so 3x3, if 2 then 5x5
     private Random rand = new Random();
     private long seed;
-    private HashMap<String, Chunk> chunks = new HashMap<>();
+    private ConcurrentHashMap<String, Chunk> chunks = new ConcurrentHashMap<>();
     private static final double SCALE = 0.007;
     private Player player;
     private Chunk currentChunk;
     private int[] currentChunkPos;
+    private int numThreads;
 
     private World() {
         currentChunkPos = new int[2];
         seed = rand.nextInt(10000);
         player = new Player();
+        numThreads = Runtime.getRuntime().availableProcessors();
     }
 
     public void isReady() {
@@ -68,15 +71,30 @@ public class World {
 
     private void initWorld() {
 
+        ExecutorService executorGenInitChunk = Executors.newFixedThreadPool(numThreads);
+
         // creates the chunks around the player
         constantRenderDistance++;
         for (int xU = -Consts.CHUNKSIZE * constantRenderDistance; xU < Consts.CHUNKSIZE
                 + Consts.CHUNKSIZE * constantRenderDistance; xU += Consts.CHUNKSIZE) {
             for (int zU = -Consts.CHUNKSIZE * constantRenderDistance; zU < Consts.CHUNKSIZE
                     + Consts.CHUNKSIZE * constantRenderDistance; zU += Consts.CHUNKSIZE) {
-                generateChunk(xU, zU);
+                int xUU = xU;
+                int zUU = zU;
+                executorGenInitChunk.submit(() -> generateChunk(xUU, zUU));
             }
         }
+        executorGenInitChunk.shutdown();
+
+        try {
+            if (!executorGenInitChunk.awaitTermination(60, TimeUnit.SECONDS)) {
+                System.out.println("Init mesh generation took too long!");
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        ExecutorService executorGenInitChunkGeo = Executors.newFixedThreadPool(numThreads);
 
         // generates the chunk meshes of chunks in a certain radius of player
         constantRenderDistance--;
@@ -84,14 +102,17 @@ public class World {
                 + Consts.CHUNKSIZE * constantRenderDistance; xU += Consts.CHUNKSIZE) {
             for (int zU = -Consts.CHUNKSIZE * constantRenderDistance; zU < Consts.CHUNKSIZE
                     + Consts.CHUNKSIZE * constantRenderDistance; zU += Consts.CHUNKSIZE) {
-                Chunk curChunk = chunks.get(xU + "," + zU);
-                curChunk.generateMesh(getAdjChunks(xU, zU));
+                int xUU = xU;
+                int zUU = zU;
+                executorGenInitChunkGeo.submit(() -> {
+                    Chunk curChunk = chunks.get(xUU + "," + zUU);
+                    curChunk.generateMesh(getAdjChunks(xUU, zUU), Math.max(
+                            Math.abs(xUU) / Consts.CHUNKSIZE, Math.abs(zUU) / Consts.CHUNKSIZE));
+                    renderChunk(curChunk.getPreGeneratedGeometry());
+                });
             }
         }
-
-        // generateChunk(0, 0);
-        // chunks.get(0 + "," + 0).generateMesh(null);
-
+        executorGenInitChunkGeo.shutdown();
 
         currentChunkPos[0] = 0;
         currentChunkPos[1] = 0;
@@ -99,8 +120,6 @@ public class World {
 
         Renderer.getInstance()
                 .setCameraInit(getHeight(Consts.SPAWNPOINTXZ * SCALE, Consts.SPAWNPOINTXZ * SCALE));
-
-        renderChunks(getInitChunkGeometry(), new ArrayList<>());
     }
 
     public void updatePlayerPosition(Vector3f pos) {
@@ -181,44 +200,63 @@ public class World {
         xGenChunk += currentChunkPos[0];
         zGenChunk += currentChunkPos[1];
 
-        List<Geometry> renderChunkGeometies = new ArrayList<>();
-        List<Geometry> unrenderChunkGeometies = new ArrayList<>();
-
+        ExecutorService executorGenChunk = Executors.newFixedThreadPool(numThreads);
 
         // generate new chunks in direction
         for (int i = 0; i < 1 + (constantRenderDistance + 1) * 2; i++) {
             int xUL = xGenChunk + i * Consts.CHUNKSIZE * xDirection;
             int zUL = zGenChunk + i * Consts.CHUNKSIZE * zDirection;
-            generateChunk(xUL, zUL);
+            executorGenChunk.submit(() -> generateChunk(xUL, zUL));
         }
+        executorGenChunk.shutdown();
+
+        ExecutorService executorUnrenderChunk = Executors.newFixedThreadPool(numThreads);
+
+        // get unrendering chunk meshes
+        for (int i = 0; i < 1 + constantRenderDistance * 2; i++) {
+            int xUL = xUnrenderChunk + i * Consts.CHUNKSIZE * xDirection;
+            int zUL = zUnrenderChunk + i * Consts.CHUNKSIZE * zDirection;
+            String chunkID = xUL + "," + zUL;
+            executorUnrenderChunk.submit(() -> {
+                if (chunks.containsKey(chunkID)) {
+                    Chunk curChunk = chunks.get(chunkID);
+                    if (curChunk.hasGeometry()) {
+                        unrenderChunk(curChunk.getPreGeneratedGeometry());
+                        curChunk.clearGeometry();
+                    }
+
+                }
+            });
+        }
+        executorUnrenderChunk.shutdown();
+
+        // wait until new chunks are done to start doin meshes
+        try {
+            if (!executorGenChunk.awaitTermination(60, TimeUnit.SECONDS)) {
+                System.out.println("Mesh generation took too long!");
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        ExecutorService executorRenderChunk = Executors.newFixedThreadPool(numThreads);
 
         // get meshes
         for (int i = 0; i < 1 + constantRenderDistance * 2; i++) {
             int xUL = xRenderChunk + i * Consts.CHUNKSIZE * xDirection;
             int zUL = zRenderChunk + i * Consts.CHUNKSIZE * zDirection;
-            String chunkID = xUL + "," + zUL;
-            Chunk chunk = chunks.get(chunkID);
-            if (!chunk.hasGeometry()) {
-                chunk.generateMesh(getAdjChunks(chunk.getX(), chunk.getZ()));
-            }
-            renderChunkGeometies.add(chunk.getPreGeneratedGeometry());
-        }
-
-        // get geometries of chunks that needed to be unloaded
-        for (int i = 0; i < 1 + constantRenderDistance * 2; i++) {
-            int xUL = xUnrenderChunk + i * Consts.CHUNKSIZE * xDirection;
-            int zUL = zUnrenderChunk + i * Consts.CHUNKSIZE * zDirection;
-            String chunkID = xUL + "," + zUL;
-            if (chunks.containsKey(chunkID)) {
-                Chunk curChunk = chunks.get(chunkID);
-                if (curChunk.hasGeometry()) {
-                    unrenderChunkGeometies.add(curChunk.getPreGeneratedGeometry());
-                    curChunk.clearGeometry();
+            executorRenderChunk.submit(() -> {
+                String chunkID = xUL + "," + zUL;
+                Chunk chunk = chunks.get(chunkID);
+                if (!chunk.hasGeometry()) {
+                    chunk.generateMesh(getAdjChunks(chunk.getX(), chunk.getZ()), Math.max(
+                            Math.abs(xUL) / Consts.CHUNKSIZE, Math.abs(zUL) / Consts.CHUNKSIZE));
                 }
-            }
+                renderChunk(chunk.getPreGeneratedGeometry());
+            });
         }
+        executorRenderChunk.shutdown();
 
-        renderChunks(renderChunkGeometies, unrenderChunkGeometies);
     }
 
     public Chunk[] getAdjChunks(int x, int z) {
@@ -230,14 +268,12 @@ public class World {
         return adjChunks;
     }
 
-    private void renderChunks(List<Geometry> renderChunks, List<Geometry> unrenderChunks) {
-        System.out.println("world rendering chunks");
-        Renderer.getInstance().renderChunks(renderChunks, unrenderChunks);
+    private void renderChunk(Geometry renderChunk) {
+        Renderer.getInstance().renderChunk(renderChunk);
     }
 
-    private List<Geometry> getInitChunkGeometry() {
-        return chunks.values().stream().filter(Chunk::hasGeometry)
-                .map(Chunk::getPreGeneratedGeometry).toList();
+    private void unrenderChunk(Geometry unrenderChunk) {
+        Renderer.getInstance().unrenderChunk(unrenderChunk);
     }
 }
 

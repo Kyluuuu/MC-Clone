@@ -112,8 +112,9 @@ public class Chunk {
         return blocks.length - 1;
     }
 
-    public void generateMesh(Chunk[] adjChunks) {
+    public void generateMesh(Chunk[] adjChunks, int distance) {
         int[] bufferLengths = calculateBufferLengths(adjChunks);
+        // System.out.println(distance);w
 
         vertices = new float[bufferLengths[0]];
         uvs = new float[bufferLengths[1]];

@@ -65,26 +65,29 @@ public class Renderer extends SimpleApplication {
     }
 
 
-    public void renderChunks(List<Geometry> chunks, List<Geometry> unrenderChunks) {
-        if (!chunks.isEmpty()) {
-            for (Geometry geometry : chunks) {
-                geometry.setMaterial(mat);
-                rootNode.attachChild(geometry);
+    public void renderChunk(Geometry chunkGeo) {
+        enqueue(() -> {
+            if (chunkGeo != null) {
+                chunkGeo.setMaterial(mat);
+                rootNode.attachChild(chunkGeo);
             }
-        }
-        if (!unrenderChunks.isEmpty()) {
-            for (Geometry geometry : unrenderChunks) {
-                Mesh mesh = geometry.getMesh();
+        });
+    }
+
+    public void unrenderChunk(Geometry unrenderGeo) {
+        enqueue(() -> {
+            if (unrenderGeo != null) {
+                Mesh mesh = unrenderGeo.getMesh();
 
                 BufferUtils.destroyDirectBuffer(mesh.getBuffer(VertexBuffer.Type.Position).getData());
                 BufferUtils.destroyDirectBuffer(mesh.getBuffer(VertexBuffer.Type.TexCoord).getData());
                 BufferUtils.destroyDirectBuffer(mesh.getBuffer(VertexBuffer.Type.Index).getData());
         
-                geometry.setMaterial(null);
-                rootNode.detachChild(geometry);
-                geometry.removeFromParent();
+                unrenderGeo.setMaterial(null);
+                rootNode.detachChild(unrenderGeo);
+                unrenderGeo.removeFromParent();
             }
-        }
+        });
     }
 
     @Override
