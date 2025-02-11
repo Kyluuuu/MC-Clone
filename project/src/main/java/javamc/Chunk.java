@@ -7,7 +7,7 @@ import com.jme3.scene.VertexBuffer;
 import java.util.List;
 
 public class Chunk {
-    private int[] blocks;
+    private byte[] blocks = new byte[Consts.CHUNKSIZE * Consts.WORLDHEIGHT * Consts.CHUNKSIZE];
 
     private int x;
     private int z;
@@ -19,15 +19,12 @@ public class Chunk {
     private float[] vertices;
     private float[] uvs;
     private short[] indices;
+    private byte[] rayCastVolume;
 
     private int vIndex = 0;
     private int uvIndex = 0;
     private int inIndex = 0;
     private int indiCounter = 0;
-
-    private int currentBlock = 0;
-    private int currentLength = 0;
-    private int maxLength = 0;
 
     public Chunk(int[][] blockTops, int x, int z, short highest) {
         this.blockTops = blockTops;
@@ -61,55 +58,31 @@ public class Chunk {
     }
 
     private void generateBlockPlacement(short highest) {
-        List<Integer> tempBlocks = new ArrayList<>();
-        currentBlock = Consts.BlockName.Stone_Block.Value;
-
         for (int yV = 0; yV <= highest; yV++) {
             for (int zV = 0; zV < Consts.CHUNKSIZE; zV++) {
                 for (int xV = 0; xV < Consts.CHUNKSIZE; xV++) {
                     if (yV > blockTops[xV][zV]) {
-                        addRLEBlock(tempBlocks, Consts.BlockName.Air.Value);
-                    } else if (yV < blockTops[xV][zV] - Consts.DIRTLAYER) {
-                        addRLEBlock(tempBlocks, Consts.BlockName.Stone_Block.Value);
+                        blocks[XYZposToBlockArrayPos(xV, yV, zV)] = Consts.BlockName.Air.Value;
+                    } else if (yV >= Consts.SNOWLAYER) {
+                        blocks[XYZposToBlockArrayPos(xV, yV, zV)] = Consts.BlockName.Snow_Block.Value;
+                    } else if (yV >= Consts.STONELAYER || yV < blockTops[xV][zV] - Consts.DIRTLAYER) {
+                        blocks[XYZposToBlockArrayPos(xV, yV, zV)] = Consts.BlockName.Stone_Block.Value;
                     } else if (yV == blockTops[xV][zV]) {
-                        addRLEBlock(tempBlocks, Consts.BlockName.Grass_Block.Value);
+                        blocks[XYZposToBlockArrayPos(xV, yV, zV)] = Consts.BlockName.Grass_Block.Value;
                     } else {
-                        addRLEBlock(tempBlocks, Consts.BlockName.Dirt_Block.Value);
+                        blocks[XYZposToBlockArrayPos(xV, yV, zV)] = Consts.BlockName.Dirt_Block.Value;
                     }
-
                 }
             }
         }
-        tempBlocks.add(currentBlock);
-        tempBlocks.add(maxLength + currentLength);
 
-        blocks = new int[tempBlocks.size() + 1];
-        for (int i = 0; i < blocks.length - 1; i++) {
-            blocks[i] = tempBlocks.get(i).intValue();
-        }
-        blocks[blocks.length - 1] = 0;
-    }
+        // rayCastVolume = new byte[] {0, 0, 0, 0, 0, Consts.CHUNKSIZE - 1, Consts.CHUNKSIZE - 1, 0, 0,
+        //         Consts.CHUNKSIZE - 1, 0, Consts.CHUNKSIZE - 1,};
 
-    private void addRLEBlock(List<Integer> tempBlocks, int newBlock) {
-        if (currentBlock == newBlock) {
-            currentLength++;
-        } else {
-            maxLength += currentLength;
-            tempBlocks.add(currentBlock);
-            tempBlocks.add(maxLength);
-            currentBlock = newBlock;
-            currentLength = 1;
-        }
     }
 
     private int XYZposToBlockArrayPos(int x, int y, int z) {
-        int oldIndex = Consts.CHUNKSIZE * Consts.CHUNKSIZE * y + z * Consts.CHUNKSIZE + x;
-        for (int i = 1; i < blocks.length; i += 2) {
-            if (oldIndex < blocks[i]) {
-                return i - 1;
-            }
-        }
-        return blocks.length - 1;
+        return Consts.CHUNKSIZE * Consts.CHUNKSIZE * y + z * Consts.CHUNKSIZE + x;
     }
 
     public void generateMesh(Chunk[] adjChunks, int distance) {
@@ -163,7 +136,6 @@ public class Chunk {
                 for (int yV = 0; yV <= blockTops[xV][zV]; yV++) {
                     if (isBlockAir(xV, yV, zV))
                         continue;
-
                     int faces = 0;
                     if (isBlockAir(xV, yV + 1, zV)) { // top face
                         faces++;
@@ -247,8 +219,6 @@ public class Chunk {
 
         return new int[] {vertexBufferLength, uvBufferLength, indiceBufferLength};
     }
-
-
 
     private void generateBlocksGeometry(Chunk[] adjChunks) {
         for (int xV = 0; xV < Consts.CHUNKSIZE; xV++) {

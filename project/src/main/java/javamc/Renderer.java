@@ -90,6 +90,15 @@ public class Renderer extends SimpleApplication {
         });
     }
 
+    public void testUnrenderChunk(Geometry unrenderGeo) {
+        enqueue(() -> {
+            if (unrenderGeo != null) {
+                rootNode.detachChild(unrenderGeo);
+                unrenderGeo.removeFromParent();
+            }
+        });
+    }
+
     @Override
     public void destroy() {
         super.destroy();

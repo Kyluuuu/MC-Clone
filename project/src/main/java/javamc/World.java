@@ -21,11 +21,12 @@ public class World {
     }
 
     private int renderDistance = 3;
-    private int constantRenderDistance = 100; // 1 block around the player, so 3x3, if 2 then 5x5
+    private int constantRenderDistance = 20; // 1 block around the player, so 3x3, if 2 then 5x5
     private Random rand = new Random();
     private long seed;
     private ConcurrentHashMap<String, Chunk> chunks = new ConcurrentHashMap<>();
-    private static final double SCALE = 0.007;
+    // private static final double SCALE = 0.007;
+    private static final double SCALE = 0.01;
     private Player player;
     private Chunk currentChunk;
     private int[] currentChunkPos;
@@ -41,7 +42,7 @@ public class World {
     }
 
     public void shutdown() {
-        //gracefully kill the system later
+        // gracefully kill the system later
         System.exit(0);
     }
 
@@ -133,6 +134,7 @@ public class World {
         updatePosThenChunkThreadQueue.submit(() -> {
             Vector3f oldPos = player.getPos();
             player.updatePlayerPosition(pos);
+
             if (oldPos.getX() == player.getX() && oldPos.getZ() == player.getZ()) {
                 return;
             }
@@ -151,8 +153,8 @@ public class World {
 
             // left
             if (player.getX() < currentChunk.getX() - Consts.CHUNKSIZE / 4) {
-                currentChunk =
-                        chunks.get((currentChunkPos[0] - Consts.CHUNKSIZE) + "," + currentChunkPos[1]);
+                currentChunk = chunks
+                        .get((currentChunkPos[0] - Consts.CHUNKSIZE) + "," + currentChunkPos[1]);
                 xRenderChunk = -constantRenderDistance * Consts.CHUNKSIZE;
                 zRenderChunk = -constantRenderDistance * Consts.CHUNKSIZE;
                 xGenChunk = xRenderChunk - Consts.CHUNKSIZE;
@@ -163,8 +165,8 @@ public class World {
             }
             // right
             else if (player.getX() >= currentChunk.getX() + Consts.CHUNKSIZE * 5 / 4) {
-                currentChunk =
-                        chunks.get((currentChunkPos[0] + Consts.CHUNKSIZE) + "," + currentChunkPos[1]);
+                currentChunk = chunks
+                        .get((currentChunkPos[0] + Consts.CHUNKSIZE) + "," + currentChunkPos[1]);
                 xRenderChunk = constantRenderDistance * Consts.CHUNKSIZE;
                 zRenderChunk = -constantRenderDistance * Consts.CHUNKSIZE;
                 xGenChunk = xRenderChunk + Consts.CHUNKSIZE;
@@ -175,8 +177,8 @@ public class World {
             }
             // up
             else if (player.getZ() < currentChunk.getZ() - Consts.CHUNKSIZE / 4) {
-                currentChunk =
-                        chunks.get(currentChunkPos[0] + "," + (currentChunkPos[1] - Consts.CHUNKSIZE));
+                currentChunk = chunks
+                        .get(currentChunkPos[0] + "," + (currentChunkPos[1] - Consts.CHUNKSIZE));
                 xRenderChunk = -constantRenderDistance * Consts.CHUNKSIZE;
                 zRenderChunk = -constantRenderDistance * Consts.CHUNKSIZE;
                 xGenChunk = xRenderChunk - Consts.CHUNKSIZE;
@@ -187,8 +189,8 @@ public class World {
             }
             // down
             else if (player.getZ() >= currentChunk.getZ() + Consts.CHUNKSIZE * 5 / 4) {
-                currentChunk =
-                        chunks.get(currentChunkPos[0] + "," + (currentChunkPos[1] + Consts.CHUNKSIZE));
+                currentChunk = chunks
+                        .get(currentChunkPos[0] + "," + (currentChunkPos[1] + Consts.CHUNKSIZE));
                 xRenderChunk = -constantRenderDistance * Consts.CHUNKSIZE;
                 zRenderChunk = constantRenderDistance * Consts.CHUNKSIZE;
                 xGenChunk = xRenderChunk - Consts.CHUNKSIZE;
@@ -201,6 +203,8 @@ public class World {
             }
 
             currentChunkPos = new int[] {currentChunk.getX(), currentChunk.getZ()};
+
+            Renderer.getInstance().testUnrenderChunk(currentChunk.getPreGeneratedGeometry());
 
             xRenderChunk += currentChunkPos[0];
             zRenderChunk += currentChunkPos[1];
@@ -218,7 +222,8 @@ public class World {
             }
             executorGenChunk.shutdown();
 
-            // wait until new chunks are done to start doin meshes and unrendering (both have to wait)
+            // wait until new chunks are done to start doin meshes and unrendering (both have to
+            // wait)
             try {
                 if (!executorGenChunk.awaitTermination(60, TimeUnit.SECONDS)) {
                     System.out.println("Mesh generation took too long!");
@@ -257,14 +262,17 @@ public class World {
                     String chunkID = xUL + "," + zUL;
                     Chunk chunk = chunks.get(chunkID);
                     if (!chunk.hasGeometry()) {
-                        chunk.generateMesh(getAdjChunks(chunk.getX(), chunk.getZ()), Math.max(
-                                Math.abs(xUL) / Consts.CHUNKSIZE, Math.abs(zUL) / Consts.CHUNKSIZE));
+                        chunk.generateMesh(getAdjChunks(chunk.getX(), chunk.getZ()),
+                                Math.max(Math.abs(xUL) / Consts.CHUNKSIZE,
+                                        Math.abs(zUL) / Consts.CHUNKSIZE));
                     }
                     renderChunk(chunk.getPreGeneratedGeometry());
                 });
             }
             executorRenderChunk.shutdown();
         });
+
+        Renderer.getInstance().renderChunk(currentChunk.getPreGeneratedGeometry());
     }
 
     public Chunk[] getAdjChunks(int x, int z) {

@@ -13,17 +13,27 @@ public class Consts {
     public static final int CHUNKMAXBLOCKS = CHUNKSIZE * CHUNKSIZE * WORLDHEIGHT;
     public static final int DIRTLAYER = 3;
     public static final int SHORTMAX = 32767;
+    public static final int RAYCASTPOINTS = 20;
+    public static final int SNOWLAYER = 150;
+    public static final int STONELAYER = 140;
 
     public enum BlockName {
-        Air(0), Grass_Block(1),
+        Air(0), 
+        Grass_Block(1),
         // Grass top
         // Grass bottom
-        Glass_Block(4), Stone_Block(5), Dirt_Block(6);
+        Glass_Block(4), 
+        Stone_Block(5), 
+        Dirt_Block(6),
+        Snow_Block(7),
+        Log_Block(8),
+        Leaf_Block(10);
 
-        final int Value;
+
+        final byte Value;
 
         BlockName(int Value) {
-            this.Value = Value;
+            this.Value = (byte) Value;
         }
     }
 

@@ -21,13 +21,18 @@ public class Block {
     static {
         blocks = new HashMap<>();
 
-        blocks.put(Consts.BlockName.Air.Value, "Air");
-        blocks.put(Consts.BlockName.Grass_Block.Value, "Grass_BlockSide");
-        blocks.put(2, "Grass_BlockTop");
-        blocks.put(3, "Grass_BlockBottom");
-        blocks.put(Consts.BlockName.Glass_Block.Value, "Glass_Block");
-        blocks.put(Consts.BlockName.Stone_Block.Value, "Stone_Block");
-        blocks.put(Consts.BlockName.Dirt_Block.Value, "Dirt_Block");
+        blocks.put((int) Consts.BlockName.Air.Value, "Air");
+        blocks.put((int) Consts.BlockName.Grass_Block.Value, "Grass_BlockSide");
+        blocks.put(Consts.BlockName.Grass_Block.Value + 1, "Grass_BlockTop");
+        blocks.put(Consts.BlockName.Grass_Block.Value + 2, "Grass_BlockBottom");
+        blocks.put((int) Consts.BlockName.Glass_Block.Value, "Glass_Block");
+        blocks.put((int) Consts.BlockName.Stone_Block.Value, "Stone_Block");
+        blocks.put((int) Consts.BlockName.Dirt_Block.Value, "Dirt_Block");
+        blocks.put((int) Consts.BlockName.Snow_Block.Value, "Snow_Block");
+        blocks.put((int) Consts.BlockName.Log_Block.Value, "Log_Block");
+        blocks.put(Consts.BlockName.Log_Block.Value + 1, "Log_BlockTop");
+        blocks.put(Consts.BlockName.Log_Block.Value + 2, "Log_BlockBottom"); //???
+        blocks.put((int) Consts.BlockName.Leaf_Block.Value, "Leaf_Block");
     }
 
     public static int getFaceNumber(int face) {
