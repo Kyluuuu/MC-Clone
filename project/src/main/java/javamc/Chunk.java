@@ -1,36 +1,32 @@
 package javamc;
 
 import java.util.ArrayList;
+import com.jme3.bounding.BoundingBox;
+import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.VertexBuffer;
 import java.util.List;
 
 public class Chunk {
+    private short[][] blockTops = new short[Consts.CHUNKSIZE][Consts.CHUNKSIZE];
     private byte[] blocks = new byte[Consts.CHUNKSIZE * Consts.WORLDHEIGHT * Consts.CHUNKSIZE];
 
-    private int x;
-    private int z;
+    private int x, z;
     private Geometry chunkGeometry;
-
-    // block array of just the tops the chunk
-    private int[][] blockTops = new int[Consts.CHUNKSIZE][Consts.CHUNKSIZE];
 
     private float[] vertices;
     private float[] uvs;
     private short[] indices;
-    private byte[] rayCastVolume;
+    private BoundingBox rayCastVolume;
 
-    private int vIndex = 0;
-    private int uvIndex = 0;
-    private int inIndex = 0;
-    private int indiCounter = 0;
+    private int vIndex, uvIndex, inIndex, indiCounter;
 
-    public Chunk(int[][] blockTops, int x, int z, short highest) {
+    public Chunk(short[][] blockTops, int x, int z, short highest, short lowest) {
         this.blockTops = blockTops;
         this.x = x;
         this.z = z;
-        generateBlockPlacement(highest);
+        generateBlockPlacement(highest, lowest);
     }
 
     public int getX() {
@@ -57,28 +53,33 @@ public class Chunk {
         return chunkGeometry != null;
     }
 
-    private void generateBlockPlacement(short highest) {
+    public BoundingBox getRayCastVolume() {
+        return rayCastVolume;
+    }
+
+    private void generateBlockPlacement(short highest, short lowest) {
         for (int yV = 0; yV <= highest; yV++) {
             for (int zV = 0; zV < Consts.CHUNKSIZE; zV++) {
                 for (int xV = 0; xV < Consts.CHUNKSIZE; xV++) {
+                    int index = XYZposToBlockArrayPos(xV, yV, zV);
                     if (yV > blockTops[xV][zV]) {
-                        blocks[XYZposToBlockArrayPos(xV, yV, zV)] = Consts.BlockName.Air.Value;
+                        blocks[index] = Consts.BlockName.Air.Value;
                     } else if (yV >= Consts.SNOWLAYER) {
-                        blocks[XYZposToBlockArrayPos(xV, yV, zV)] = Consts.BlockName.Snow_Block.Value;
-                    } else if (yV >= Consts.STONELAYER || yV < blockTops[xV][zV] - Consts.DIRTLAYER) {
-                        blocks[XYZposToBlockArrayPos(xV, yV, zV)] = Consts.BlockName.Stone_Block.Value;
+                        blocks[index] = Consts.BlockName.Snow_Block.Value;
+                    } else if (yV >= Consts.STONELAYER
+                            || yV < blockTops[xV][zV] - Consts.DIRTLAYER) {
+                        blocks[index] = Consts.BlockName.Stone_Block.Value;
                     } else if (yV == blockTops[xV][zV]) {
-                        blocks[XYZposToBlockArrayPos(xV, yV, zV)] = Consts.BlockName.Grass_Block.Value;
+                        blocks[index] = Consts.BlockName.Grass_Block.Value;
                     } else {
-                        blocks[XYZposToBlockArrayPos(xV, yV, zV)] = Consts.BlockName.Dirt_Block.Value;
+                        blocks[index] = Consts.BlockName.Dirt_Block.Value;
                     }
                 }
             }
         }
 
-        // rayCastVolume = new byte[] {0, 0, 0, 0, 0, Consts.CHUNKSIZE - 1, Consts.CHUNKSIZE - 1, 0, 0,
-        //         Consts.CHUNKSIZE - 1, 0, Consts.CHUNKSIZE - 1,};
-
+        rayCastVolume = new BoundingBox(new Vector3f(x, lowest, z),
+                new Vector3f(x + Consts.CHUNKSIZE - 1, highest, z + Consts.CHUNKSIZE - 1));
     }
 
     private int XYZposToBlockArrayPos(int x, int y, int z) {
@@ -108,12 +109,11 @@ public class Chunk {
         chunkMesh.updateBound();
 
         // create the geomoetry using the mesh
-        Geometry geometry = new Geometry("CustomMesh", chunkMesh);
+        chunkGeometry = new Geometry("CustomMesh", chunkMesh);
 
         // move the geometry to its respective chunk coordinates
-        geometry.move(x, 0, z);
+        chunkGeometry.move(x, 0, z);
 
-        chunkGeometry = geometry;
         vertices = null;
         uvs = null;
         indices = null;
@@ -121,8 +121,6 @@ public class Chunk {
         vIndex = 0;
         uvIndex = 0;
         inIndex = 0;
-
-
     }
 
     // calculates vertices length needed for matrices for the mesh generation
@@ -258,7 +256,7 @@ public class Chunk {
         if (adjChunks == null)
             return;
         // left face
-        if (adjChunks[0] != null) {
+        if (adjChunks[Consts.LEFT] != null) {
             int xVLR = 0;
             for (int zVLR = 0; zVLR < Consts.CHUNKSIZE; zVLR++) {
                 for (int yVLR = 0; yVLR <= blockTops[xVLR][zVLR]; yVLR++) {
@@ -270,7 +268,7 @@ public class Chunk {
         }
 
         // right face
-        if (adjChunks[2] != null) {
+        if (adjChunks[Consts.RIGHT] != null) {
             int xVLR = Consts.CHUNKSIZE - 1;
             for (int zVLR = 0; zVLR < Consts.CHUNKSIZE; zVLR++) {
                 for (int yVLR = 0; yVLR <= blockTops[xVLR][zVLR]; yVLR++) {
@@ -282,7 +280,7 @@ public class Chunk {
         }
 
         // backface
-        if (adjChunks[1] != null) {
+        if (adjChunks[Consts.UP] != null) {
             int zVFB = 0;
             for (int xVFB = 0; xVFB < Consts.CHUNKSIZE; xVFB++) {
                 for (int yVFB = 0; yVFB <= blockTops[xVFB][zVFB]; yVFB++) {
@@ -293,7 +291,7 @@ public class Chunk {
             }
         }
         // frontface
-        if (adjChunks[3] != null) {
+        if (adjChunks[Consts.DOWN] != null) {
             int zVFB = Consts.CHUNKSIZE - 1;
             for (int xVFB = 0; xVFB < Consts.CHUNKSIZE; xVFB++) {
                 for (int yVFB = 0; yVFB <= blockTops[xVFB][zVFB]; yVFB++) {
@@ -320,19 +318,19 @@ public class Chunk {
 
     private void generateBlockUVCoordinates(int block, int face) {
         float[] texturePos = Block.getTexturePos(block, face);
-        texturePos[0] += 1 / 4200f;
-        texturePos[1] += 1 / 4096f;
+        texturePos[0] += Consts.TEXTUREBLEEDOFFSET;
+        texturePos[1] += Consts.TEXTUREBLEEDOFFSET;
 
         uvs[uvIndex++] = texturePos[0];
         uvs[uvIndex++] = texturePos[1];
 
         uvs[uvIndex++] = texturePos[0];
-        uvs[uvIndex++] = (texturePos[1] + 1 / 64f - 1 / 4096f);
+        uvs[uvIndex++] = texturePos[1] + Consts.TEXTUREBLEEDOFFSETX;
 
-        uvs[uvIndex++] = (texturePos[0] + 1 / 64f - 1 / 4096f);
-        uvs[uvIndex++] = (texturePos[1] + 1 / 64f - 1 / 4096f);
+        uvs[uvIndex++] = texturePos[0] + Consts.TEXTUREBLEEDOFFSETX;
+        uvs[uvIndex++] = texturePos[1] + Consts.TEXTUREBLEEDOFFSETZ;
 
-        uvs[uvIndex++] = (texturePos[0] + 1 / 64f - 1 / 4096f);
+        uvs[uvIndex++] = texturePos[0] + Consts.TEXTUREBLEEDOFFSETZ;
         uvs[uvIndex++] = texturePos[1];
     }
 

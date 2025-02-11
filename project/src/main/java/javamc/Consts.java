@@ -16,6 +16,16 @@ public class Consts {
     public static final int RAYCASTPOINTS = 20;
     public static final int SNOWLAYER = 150;
     public static final int STONELAYER = 140;
+    public static final int TEXTUREBLEEDPARTITION = 64;
+    public static final float TEXTUREBLEEDOFFSET = TEXTUREATLASUNIT / TEXTUREBLEEDPARTITION;
+    public static final float TEXTUREBLEEDOFFSETX = TEXTUREATLASUNIT - (2 * TEXTUREBLEEDOFFSET);
+    public static final float TEXTUREBLEEDOFFSETZ = TEXTUREATLASUNIT - TEXTUREBLEEDOFFSET;
+    public static final int LEFT = 0;
+    public static final int UP = 1;
+    public static final int RIGHT = 2;
+    public static final int DOWN = 3;
+    public static final int DIRECTIONALL = -1;
+
 
     public enum BlockName {
         Air(0), 

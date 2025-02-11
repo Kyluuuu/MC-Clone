@@ -4,6 +4,7 @@ import com.jme3.app.SimpleApplication;
 import com.jme3.material.Material;
 import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.Ray;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
@@ -15,6 +16,8 @@ import com.jme3.util.BufferUtils;
 import com.jme3.util.SkyFactory;
 import com.jme3.scene.shape.Box;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import com.jme3.math.Vector3f;
 import java.lang.management.BufferPoolMXBean;
 import java.lang.management.ManagementFactory;
@@ -22,6 +25,7 @@ import java.lang.management.ManagementFactory;
 public class Renderer extends SimpleApplication {
 
     private static Renderer instance = null;
+    private ExecutorService rayCastCalculationThread;
 
     public static synchronized Renderer getInstance() {
         if (instance == null) {
@@ -34,13 +38,14 @@ public class Renderer extends SimpleApplication {
 
     private Renderer() {
         start();
+        rayCastCalculationThread = Executors.newSingleThreadExecutor();
     }
 
     // coordinates for jmonkey, x, y, z, where y is vertical
     @Override
     public void simpleInitApp() {
         setDisplayStatView(true);
-        flyCam.setMoveSpeed(60f);
+        flyCam.setMoveSpeed(200f);
 
         cam.setFrustumFar(10000f);
 
@@ -90,15 +95,6 @@ public class Renderer extends SimpleApplication {
         });
     }
 
-    public void testUnrenderChunk(Geometry unrenderGeo) {
-        enqueue(() -> {
-            if (unrenderGeo != null) {
-                rootNode.detachChild(unrenderGeo);
-                unrenderGeo.removeFromParent();
-            }
-        });
-    }
-
     @Override
     public void destroy() {
         super.destroy();
@@ -108,6 +104,10 @@ public class Renderer extends SimpleApplication {
     @Override
     public void simpleUpdate(float tpf) {
         World.getInstance().updatePlayerPosition(cam.getLocation());
+        rayCastCalculationThread.submit(() -> castRays());
+    }
+
+    private void castRays() {   
     }
 }
 

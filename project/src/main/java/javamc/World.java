@@ -21,24 +21,24 @@ public class World {
     }
 
     private int renderDistance = 3;
-    private int constantRenderDistance = 20; // 1 block around the player, so 3x3, if 2 then 5x5
+    private int constantRenderDistance = 80; // 1 block around the player, so 3x3, if 2 then 5x5
     private Random rand = new Random();
     private long seed;
     private ConcurrentHashMap<String, Chunk> chunks = new ConcurrentHashMap<>();
-    // private static final double SCALE = 0.007;
     private static final double SCALE = 0.01;
     private Player player;
     private Chunk currentChunk;
     private int[] currentChunkPos;
-    private int numThreads;
     private ExecutorService updatePosThenChunkThreadQueue;
+    private ExecutorService chunkGenerationThreadPool;
 
     private World() {
         currentChunkPos = new int[2];
         seed = rand.nextInt(10000);
         player = new Player();
-        numThreads = Runtime.getRuntime().availableProcessors();
         updatePosThenChunkThreadQueue = Executors.newSingleThreadExecutor();
+        chunkGenerationThreadPool =
+                Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 2);
     }
 
     public void shutdown() {
@@ -54,21 +54,25 @@ public class World {
         if (chunks.containsKey(x + "," + z))
             return;
 
-        int[][] heightMap = new int[Consts.CHUNKSIZE][Consts.CHUNKSIZE];
+        short[][] heightMap = new short[Consts.CHUNKSIZE][Consts.CHUNKSIZE];
         short highest = 0;
+        short lowest = Consts.WORLDHEIGHT;
 
         for (int xMap = 0; xMap < Consts.CHUNKSIZE; xMap++) {
             for (int zMap = 0; zMap < Consts.CHUNKSIZE; zMap++) {
                 double nx = (x + xMap) * SCALE;
                 double nz = (z + zMap) * SCALE;
                 int height = getHeight(nx, nz);
-                heightMap[xMap][zMap] = height;
+                heightMap[xMap][zMap] = (short) height;
                 if (height > highest) {
                     highest = (short) height;
                 }
+                if (height < lowest) {
+                    lowest = (short) height;
+                }
             }
         }
-        chunks.put(x + "," + z, new Chunk(heightMap, x, z, highest));
+        chunks.put(x + "," + z, new Chunk(heightMap, x, z, highest, lowest));
     }
 
     private int getHeight(double nx, double nz) {
@@ -78,31 +82,34 @@ public class World {
     }
 
     private void initWorld() {
-
-        ExecutorService executorGenInitChunk = Executors.newFixedThreadPool(numThreads);
+        constantRenderDistance++;
+        int latchCount = 1 + constantRenderDistance * 2;
+        CountDownLatch latch = new CountDownLatch(latchCount * latchCount);
 
         // creates the chunks around the player
-        constantRenderDistance++;
         for (int xU = -Consts.CHUNKSIZE * constantRenderDistance; xU < Consts.CHUNKSIZE
                 + Consts.CHUNKSIZE * constantRenderDistance; xU += Consts.CHUNKSIZE) {
             for (int zU = -Consts.CHUNKSIZE * constantRenderDistance; zU < Consts.CHUNKSIZE
                     + Consts.CHUNKSIZE * constantRenderDistance; zU += Consts.CHUNKSIZE) {
                 int xUU = xU;
                 int zUU = zU;
-                executorGenInitChunk.submit(() -> generateChunk(xUU, zUU));
+                chunkGenerationThreadPool.submit(() -> {
+                    try {
+                        generateChunk(xUU, zUU);
+                    } finally {
+                        latch.countDown();
+                    }
+                });
             }
         }
-        executorGenInitChunk.shutdown();
+
 
         try {
-            if (!executorGenInitChunk.awaitTermination(60, TimeUnit.SECONDS)) {
-                System.out.println("Init mesh generation took too long!");
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            latch.await(10, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            System.out
+                    .println("Failed to load chunks fast enough before meshing in initialisation");
         }
-
-        ExecutorService executorGenInitChunkGeo = Executors.newFixedThreadPool(numThreads);
 
         // generates the chunk meshes of chunks in a certain radius of player
         constantRenderDistance--;
@@ -112,15 +119,14 @@ public class World {
                     + Consts.CHUNKSIZE * constantRenderDistance; zU += Consts.CHUNKSIZE) {
                 int xUU = xU;
                 int zUU = zU;
-                executorGenInitChunkGeo.submit(() -> {
+                chunkGenerationThreadPool.submit(() -> {
                     Chunk curChunk = chunks.get(xUU + "," + zUU);
-                    curChunk.generateMesh(getAdjChunks(xUU, zUU), Math.max(
+                    curChunk.generateMesh(getAdjChunks(xUU, zUU, Consts.DIRECTIONALL), Math.max(
                             Math.abs(xUU) / Consts.CHUNKSIZE, Math.abs(zUU) / Consts.CHUNKSIZE));
                     renderChunk(curChunk.getPreGeneratedGeometry());
                 });
             }
         }
-        executorGenInitChunkGeo.shutdown();
 
         currentChunkPos[0] = 0;
         currentChunkPos[1] = 0;
@@ -132,6 +138,7 @@ public class World {
 
     public void updatePlayerPosition(Vector3f pos) {
         updatePosThenChunkThreadQueue.submit(() -> {
+
             Vector3f oldPos = player.getPos();
             player.updatePlayerPosition(pos);
 
@@ -151,6 +158,8 @@ public class World {
             int xDirection = 0;
             int zDirection = 0;
 
+            int adjChunkDirection = Consts.DIRECTIONALL;
+
             // left
             if (player.getX() < currentChunk.getX() - Consts.CHUNKSIZE / 4) {
                 currentChunk = chunks
@@ -162,6 +171,7 @@ public class World {
                 xUnrenderChunk += constantRenderDistance * Consts.CHUNKSIZE;
                 zUnrenderChunk -= constantRenderDistance * Consts.CHUNKSIZE;
                 zDirection = 1;
+                adjChunkDirection = Consts.LEFT;
             }
             // right
             else if (player.getX() >= currentChunk.getX() + Consts.CHUNKSIZE * 5 / 4) {
@@ -174,6 +184,7 @@ public class World {
                 xUnrenderChunk -= constantRenderDistance * Consts.CHUNKSIZE;
                 zUnrenderChunk -= constantRenderDistance * Consts.CHUNKSIZE;
                 zDirection = 1;
+                adjChunkDirection = Consts.RIGHT;
             }
             // up
             else if (player.getZ() < currentChunk.getZ() - Consts.CHUNKSIZE / 4) {
@@ -186,6 +197,7 @@ public class World {
                 xUnrenderChunk -= constantRenderDistance * Consts.CHUNKSIZE;
                 zUnrenderChunk += constantRenderDistance * Consts.CHUNKSIZE;
                 xDirection = 1;
+                adjChunkDirection = Consts.UP;
             }
             // down
             else if (player.getZ() >= currentChunk.getZ() + Consts.CHUNKSIZE * 5 / 4) {
@@ -198,13 +210,12 @@ public class World {
                 xUnrenderChunk -= constantRenderDistance * Consts.CHUNKSIZE;
                 zUnrenderChunk -= constantRenderDistance * Consts.CHUNKSIZE;
                 xDirection = 1;
+                adjChunkDirection = Consts.DOWN;
             } else {
                 return;
             }
 
             currentChunkPos = new int[] {currentChunk.getX(), currentChunk.getZ()};
-
-            Renderer.getInstance().testUnrenderChunk(currentChunk.getPreGeneratedGeometry());
 
             xRenderChunk += currentChunkPos[0];
             zRenderChunk += currentChunkPos[1];
@@ -212,34 +223,55 @@ public class World {
             xGenChunk += currentChunkPos[0];
             zGenChunk += currentChunkPos[1];
 
-            ExecutorService executorGenChunk = Executors.newFixedThreadPool(numThreads);
+
+            CountDownLatch latch = new CountDownLatch(1 + (constantRenderDistance + 1) * 2);
 
             // generate new chunks in direction
             for (int i = 0; i < 1 + (constantRenderDistance + 1) * 2; i++) {
                 int xUL = xGenChunk + i * Consts.CHUNKSIZE * xDirection;
                 int zUL = zGenChunk + i * Consts.CHUNKSIZE * zDirection;
-                executorGenChunk.submit(() -> generateChunk(xUL, zUL));
+                chunkGenerationThreadPool.submit(() -> {
+                    try {
+                        generateChunk(xUL, zUL);
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+
             }
-            executorGenChunk.shutdown();
 
             // wait until new chunks are done to start doin meshes and unrendering (both have to
             // wait)
             try {
-                if (!executorGenChunk.awaitTermination(60, TimeUnit.SECONDS)) {
-                    System.out.println("Mesh generation took too long!");
-                }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                latch.await(10, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                System.out.println(
+                        "Failed to load chunks fast enough before meshing in initialisation");
             }
 
-            ExecutorService executorUnrenderChunk = Executors.newFixedThreadPool(numThreads);
+            // get meshes
+            for (int i = 0; i < 1 + constantRenderDistance * 2; i++) {
+                int xUL = xRenderChunk + i * Consts.CHUNKSIZE * xDirection;
+                int zUL = zRenderChunk + i * Consts.CHUNKSIZE * zDirection;
+                int finalAdjChunkDirection = adjChunkDirection;
+                chunkGenerationThreadPool.submit(() -> {
+                    String chunkID = xUL + "," + zUL;
+                    Chunk chunk = chunks.get(chunkID);
+                    if (!chunk.hasGeometry()) {
+                        chunk.generateMesh(getAdjChunks(chunk.getX(), chunk.getZ(), finalAdjChunkDirection),
+                                Math.max(Math.abs(xUL) / Consts.CHUNKSIZE,
+                                        Math.abs(zUL) / Consts.CHUNKSIZE));
+                    }
+                    renderChunk(chunk.getPreGeneratedGeometry());
+                });
+            }
 
             // get unrendering chunk meshes
             for (int i = 0; i < 1 + constantRenderDistance * 2; i++) {
                 int xUL = xUnrenderChunk + i * Consts.CHUNKSIZE * xDirection;
                 int zUL = zUnrenderChunk + i * Consts.CHUNKSIZE * zDirection;
                 String chunkID = xUL + "," + zUL;
-                executorUnrenderChunk.submit(() -> {
+                chunkGenerationThreadPool.submit(() -> {
                     if (chunks.containsKey(chunkID)) {
                         Chunk curChunk = chunks.get(chunkID);
                         if (curChunk.hasGeometry()) {
@@ -250,37 +282,29 @@ public class World {
                     }
                 });
             }
-            executorUnrenderChunk.shutdown();
-
-            ExecutorService executorRenderChunk = Executors.newFixedThreadPool(numThreads);
-
-            // get meshes
-            for (int i = 0; i < 1 + constantRenderDistance * 2; i++) {
-                int xUL = xRenderChunk + i * Consts.CHUNKSIZE * xDirection;
-                int zUL = zRenderChunk + i * Consts.CHUNKSIZE * zDirection;
-                executorRenderChunk.submit(() -> {
-                    String chunkID = xUL + "," + zUL;
-                    Chunk chunk = chunks.get(chunkID);
-                    if (!chunk.hasGeometry()) {
-                        chunk.generateMesh(getAdjChunks(chunk.getX(), chunk.getZ()),
-                                Math.max(Math.abs(xUL) / Consts.CHUNKSIZE,
-                                        Math.abs(zUL) / Consts.CHUNKSIZE));
-                    }
-                    renderChunk(chunk.getPreGeneratedGeometry());
-                });
-            }
-            executorRenderChunk.shutdown();
         });
-
-        Renderer.getInstance().renderChunk(currentChunk.getPreGeneratedGeometry());
     }
 
-    public Chunk[] getAdjChunks(int x, int z) {
+    public Chunk[] getAdjChunks(int x, int z, int direction) {
         Chunk[] adjChunks = new Chunk[4];
-        adjChunks[0] = chunks.get((x - Consts.CHUNKSIZE) + "," + z); // left chunk
-        adjChunks[1] = chunks.get(x + "," + (z - Consts.CHUNKSIZE)); // top chunk
-        adjChunks[2] = chunks.get((x + Consts.CHUNKSIZE) + "," + z); // right chunk
-        adjChunks[3] = chunks.get(x + "," + (z + Consts.CHUNKSIZE)); // bottom chunk
+        if (direction == Consts.DIRECTIONALL) {
+            adjChunks[Consts.LEFT] = chunks.get((x - Consts.CHUNKSIZE) + "," + z); // left chunk
+            adjChunks[Consts.UP] = chunks.get(x + "," + (z - Consts.CHUNKSIZE)); // top chunk
+            adjChunks[Consts.RIGHT] = chunks.get((x + Consts.CHUNKSIZE) + "," + z); // right chunk
+            adjChunks[Consts.DOWN] = chunks.get(x + "," + (z + Consts.CHUNKSIZE)); // bottom chunk
+        }
+        else if (direction == Consts.LEFT) {
+            adjChunks[Consts.LEFT] = chunks.get((x - Consts.CHUNKSIZE) + "," + z); // left chunk
+        }
+        else if (direction == Consts.UP) {
+            adjChunks[Consts.UP] = chunks.get(x + "," + (z - Consts.CHUNKSIZE)); // top chunk
+        }
+        else if (direction == Consts.RIGHT) {
+            adjChunks[Consts.RIGHT] = chunks.get((x + Consts.CHUNKSIZE) + "," + z); // right chunk
+        }
+        else {
+            adjChunks[Consts.DOWN] = chunks.get(x + "," + (z + Consts.CHUNKSIZE)); // bottom chunk
+        }
         return adjChunks;
     }
 
@@ -292,5 +316,13 @@ public class World {
         Renderer.getInstance().unrenderChunk(unrenderChunk);
     }
 }
+
+//raycasting for occlusion culling
+//add all chunks to the scene, before rendering chunk meshes 
+//3x3 around player will always render, 
+//get all chunks within the players frustum
+//then for all these chunks check if the rays collide with their rayVolume, if so render those chuinks else dont
+
+
 
 

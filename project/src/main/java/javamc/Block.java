@@ -58,7 +58,7 @@ public class Block {
         }
 
         result[0] = ((block + face - 1) % Consts.TEXTUREATLASROW) * Consts.TEXTUREATLASUNIT;
-        int ftemp = (block + face) / Consts.TEXTUREATLASROW;
+        int ftemp = (block + face) /  Consts.TEXTUREATLASROW;
         result[1] = 1f - ((ftemp + 1) * Consts.TEXTUREATLASUNIT);
         return result;
     }
